@@ -1,0 +1,16 @@
+version: '3'
+services:
+  db:
+    container_name: db
+    build:
+      context: .
+      dockerfile: Dockerfile-db
+    restart: always
+    environment:
+      POSTGRES_USER: spatial
+      POSTGRES_PASSWORD: test4now
+      POSTGRES_DB: spatial
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/
