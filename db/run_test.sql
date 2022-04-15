@@ -30,4 +30,5 @@ SELECT id FROM "public"."geom_test"
 -- Only works for 2D :-(
 SELECT ST_AsText(ST_centroid(geom)) FROM "public"."geom_test";
 
+-- Yes, these should be closed!
 SELECT ST_IsClosed(geom) FROM "public"."geom_test";
