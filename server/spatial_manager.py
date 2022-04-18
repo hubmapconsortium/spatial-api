@@ -15,48 +15,72 @@ class SpatialManager(object):
         self.neo4j_manager = Neo4jManager()
         self.postgresql_manager = PostgresqlManager()
 
-    def load_db_all(self) -> List[dict]:
-        recs: List[dict] = self.neo4j_manager.query_all()
-        for rec in recs:
-            self.load_db_record(rec)
+    def close(self):
+        self.neo4j_manager.close()
+        self.postgresql_manager.close()
 
-    def load_db_organ(self, organ: str):
+    def create_YZ_plane_at_X(self, xyz: dict) -> str:
+        return f"((" \
+               f"{xyz['x']} {-xyz['y']} {-xyz['z']}, " \
+               f"{xyz['x']} {-xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {xyz['y']} {-xyz['z']}, " \
+               f"{xyz['x']} {-xyz['y']} {-xyz['z']}" \
+               f"))"
+
+    def create_XY_plane_at_Z(self, xyz: dict) -> str:
+        # f"((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5))," \
+        return f"((" \
+               f"{-xyz['x']} {-xyz['y']} {xyz['z']}, " \
+               f"{-xyz['x']} {xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {-xyz['y']} {xyz['z']}, " \
+               f"{-xyz['x']} {-xyz['y']} {xyz['z']}" \
+               f"))"
+
+    def create_XZ_plane_at_Y(self, xyz: dict) -> str:
+        return f"((" \
+               f"{-xyz['x']} {xyz['y']} {-xyz['z']}, " \
+               f"{-xyz['x']} {xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {xyz['y']} {xyz['z']}, " \
+               f"{xyz['x']} {xyz['y']} {-xyz['z']}, " \
+               f"{-xyz['x']} {xyz['y']} {-xyz['z']}" \
+               f"))"
+
+    # The PostGRIS geometry should be constructed with the centroid of the object being at POINT(0,0,0)
+    def create_multipolygon_geom(self, xyz: dict) -> str:
+        return f"'MULTIPOLYGON Z(" \
+               f"{self.create_YZ_plane_at_X({'x': -xyz['x']/2, 'y': xyz['y']/2, 'z': xyz['z']/2})}" \
+               f",{self.create_YZ_plane_at_X({'x': xyz['x']/2, 'y': xyz['y']/2, 'z': xyz['z']/2})}" \
+               f",{self.create_XZ_plane_at_Y({'x': xyz['x']/2, 'y': -xyz['y']/2, 'z': xyz['z']/2})}" \
+               f",{self.create_XZ_plane_at_Y({'x': xyz['x']/2, 'y': xyz['y']/2, 'z': xyz['z']/2})}" \
+               f",{self.create_XY_plane_at_Z({'x': xyz['x']/2, 'y': xyz['y']/2, 'z': -xyz['z']/2})}" \
+               f",{self.create_XY_plane_at_Z({'x': xyz['x']/2, 'y': xyz['y']/2, 'z': xyz['z']/2})}" \
+               f" )'"
+
+    def create_geometry(self, rec: dict) -> str:
+        geom: str = self.create_multipolygon_geom(rec['dimension']['value'])
+        return "ST_Translate(" \
+               "ST_Scale(" \
+               "ST_RotateZ(ST_RotateY(ST_RotateX(" \
+               f"ST_GeomFromText({geom})," \
+               f" {rec['rotation']['value']['x']}), {rec['rotation']['value']['y']}), {rec['rotation']['value']['z']})," \
+               f" {rec['scaling']['value']['x']}, {rec['scaling']['value']['y']}, {rec['scaling']['value']['z']})," \
+               f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
+
+    def create_insert(self, table: str, rec: dict) -> str:
+        return f"INSERT INTO {table} (uuid, hubmap_id, organ_uuid, organ_organ, geom)" \
+               f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}', {self.create_geometry(rec['spatial_data'])});"
+
+    def insert_organ_data(self, table: str, organ: str) -> None:
         recs: List[dict] = self.neo4j_manager.query_organ(organ)
         for rec in recs:
-            self.load_db_record(rec)
-
-    def load_db_record(self, record: dict) -> None:
-        # A polygon is a representation of an area. The outer boundary of the polygon is represented by a ring.
-        # This ring is a linestring that is both closed and simple as defined above.
-        # https://postgis.net/docs/PostGIS_Special_Functions_Index.html#PostGIS_3D_Functions
-        # https://postgis.net/docs/ST_GeomFromGeoJSON.html
-
-        # https://postgis.net/docs/manual-2.2/using_postgis_dbmanagement.html
-        # 4.4.1. Loading Data Using SQL
-        # INSERT INTO roads (road_id, roads_geom, road_name)
-        #   VALUES (1,ST_GeomFromText('LINESTRING(191232 243118,191108 243242)',-1),'Jeff Rd');
-        #
-        # 4.5.1. Using SQL to Retrieve Data
-        # SELECT road_id, ST_AsText(road_geom) AS geom, road_name FROM roads;
-        #
-        # Query will use the bounding box of the polygon for comparison purposes:
-        # SELECT road_id, road_name FROM roads
-        # WHERE roads_geom && ST_GeomFromText('POLYGON((...))',312);
-        #
-        # 4.6.1. GiST Indexes
-        # CREATE INDEX [indexname] ON [tablename] USING GIST ( [geometryfield] );
-        #
-        # 4.7.1. Taking Advantage of Indexes
-        # SELECT the_geom
-        # FROM geom_table
-        # WHERE ST_Distance(the_geom, ST_GeomFromText('POINT(100000 200000)', 312)) < 100
-        pass
-
+            statement: str = self.create_insert(table, rec)
+            import pdb; pdb.set_trace()
+            self.postgresql_manager.insert(statement)
 
 if __name__ == '__main__':
     manager = SpatialManager()
-    recs: List[dict] = manager.load_db_organ('RK')
+    manager.insert_organ_data('"public"."sample"', 'RK')
     import pdb; pdb.set_trace()
-    for rec in recs:
-        manager.load_db_record(rec)
     manager.close()

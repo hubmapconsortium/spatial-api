@@ -32,3 +32,20 @@ SELECT ST_AsText(ST_centroid(geom)) FROM "public"."geom_test";
 
 -- Yes, these should be closed!
 SELECT ST_IsClosed(geom) FROM "public"."geom_test";
+
+-- https://postgis.net/docs/ST_PointOnSurface.html
+-- ST_AsText is the reverse of ST_GeomFromText.
+WITH test AS (SELECT geom from "public"."geom_test" WHERE id = 1)
+SELECT ST_AsEWKT(ST_PointOnSurface(geom)) median
+FROM test;
+
+-- Rotates about the X-axis and not the centroid!!!
+-- If you want to employ a general axis, you would need to construct the corresponding rotation matrix and substitute
+-- its elements for the arguments a,b,c,d,e,f,g,h,i of ST_Affine and set xoff, yoff, zoff to zero.
+-- https://en.wikipedia.org/wiki/Rotation_matrix#Rotation_matrix_from_axis_and_angle (Rotation Matrix)
+WITH test AS (SELECT geom from "public"."geom_test" WHERE id = 1)
+SELECT ST_AsEWKT(ST_RotateX(geom, radians(-90.0), ST_Centroid(geom))) rotated
+FROM test;
+
+-- https://stackoverflow.com/questions/19781319/how-to-rotate-scaling-translate-about-centroid
+-- Translate the object so that the centroid coincides with the origin, then perform whatever transformation, then translate it back.

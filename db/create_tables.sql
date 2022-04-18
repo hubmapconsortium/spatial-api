@@ -12,8 +12,10 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
     PRIMARY KEY ("id")
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
+-- http://www.bostongis.com/postgis_quickguide_1_4.bqg
 ALTER TABLE "public"."sample" ADD COLUMN IF NOT EXISTS geom geometry(MULTIPOLYGONZ,0);
-CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST ( "geom" );
+ALTER TABLE "public"."sample" ALTER COLUMN geom SET NOT NULL;
+CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST( "geom" );
 
 DROP TABLE IF EXISTS "public"."geom_test";
 CREATE TABLE IF NOT EXISTS "public"."geom_test" (
@@ -21,7 +23,8 @@ CREATE TABLE IF NOT EXISTS "public"."geom_test" (
     PRIMARY KEY ("id")
 );
 ALTER TABLE "public"."geom_test" ADD COLUMN IF NOT EXISTS geom geometry(MULTIPOLYGONZ,0);
-CREATE INDEX IF NOT EXISTS "geom_test_index" ON "public"."geom_test" USING GIST ( "geom" );
+ALTER TABLE "public"."geom_test" ALTER COLUMN geom SET NOT NULL;
+CREATE INDEX IF NOT EXISTS "geom_test_index" ON "public"."geom_test" USING GIST(geom);
 -- ST_IsValid only works for 2D objects
 -- https://trac.osgeo.org/postgis/ticket/4364
 -- ALTER TABLE "public"."geom_test" ADD CONSTRAINT "geom_valid_check" CHECK (ST_IsValid(geom));

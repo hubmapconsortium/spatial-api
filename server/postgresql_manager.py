@@ -31,9 +31,11 @@ class PostgresqlManager(object):
         self.conn = psycopg2.connect(**connection)
         #import pdb; pdb.set_trace()
 
-    def insert(self, record):
+    def close(self):
+        self.conn.close()
+
+    def insert(self, statement):
         cursor = self.conn.cursor()
-        statement: str = "INSERT INTO "
         cursor.execute(statement)
         cursor.close()
 
