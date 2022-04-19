@@ -11,6 +11,8 @@ logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+TABLE: str = 'sample'
+
 
 class PostgresqlManager(object):
 
@@ -37,25 +39,6 @@ class PostgresqlManager(object):
     def commit(self) -> None:
         self.conn.commit()
 
-    # https://www.postgresqltutorial.com/postgresql-python/insert/
-    def insert(self, args: Tuple[str, str, str, str, str]) -> int:
-        sql: str = """
-        INSERT INTO sample (uuid, hubmap_id, organ_uuid, organ_organ, geom)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id;
-        """
-        id : int= None
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql, args)
-            # get the generated id back
-            id = cursor.fetchone()[0]
-            self.conn.commit()
-            cursor.close()
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
-        return id
-
     def insert(self, sql: str) -> int:
         id: int = None
         try:
@@ -69,6 +52,19 @@ class PostgresqlManager(object):
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(e)
         return id
+
+    def select(self, sql: str) -> List[int]:
+        data: List[int] = None
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            data = [row[0] for row in cursor.fetchall()]
+            #import pdb; pdb.set_trace()
+            logger.info(f'Returned {len(data)} rows')
+            cursor.close()
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        return data
 
 
 if __name__ == '__main__':

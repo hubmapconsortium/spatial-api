@@ -1,7 +1,7 @@
 import logging
 from typing import List
 from neo4j_manager import Neo4jManager
-from postgresql_manager import PostgresqlManager
+from postgresql_manager import PostgresqlManager, TABLE
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -68,8 +68,8 @@ class SpatialManager(object):
                f" {rec['scaling']['value']['x']}, {rec['scaling']['value']['y']}, {rec['scaling']['value']['z']})," \
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
-    def create_sql_insert(self, table: str, rec: dict) -> str:
-        return f"INSERT INTO {table} (uuid, hubmap_id, organ_uuid, organ_organ, geom)" \
+    def create_sql_insert(self, rec: dict) -> str:
+        return f"INSERT INTO {TABLE} (uuid, hubmap_id, organ_uuid, organ_organ, geom)" \
                f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}'," \
                f" {self.create_geometry(rec['spatial_data'])})" \
                f" RETURNING id;"
@@ -77,13 +77,21 @@ class SpatialManager(object):
     def insert_organ_data(self, organ: str) -> None:
         recs: List[dict] = self.neo4j_manager.query_organ(organ)
         for rec in recs:
-            sql: str = self.create_sql_insert('public.sample', rec)
+            sql: str = self.create_sql_insert(rec)
             id: int = self.postgresql_manager.insert(sql)
             logger.info(f"Inserting geom record as; id={id}")
 
+    def find_within_radius(self, radius: float) -> List[int]:
+        sql: str = f"""SELECT id FROM {TABLE}
+        WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ(0 0 0)'), {radius});
+        """
+        return self.postgresql_manager.select(sql)
 
+# NOTE: run '$ ./scripts/create_tables.sh' to get a clean database before doing this.
 if __name__ == '__main__':
     manager = SpatialManager()
     manager.insert_organ_data('RK')
     #import pdb; pdb.set_trace()
+    ids: List[int] = manager.find_within_radius(23.0)
+    logger.info(f'Ids of geometries matching the search: {", ". join([str(id) for id in ids]) }')
     manager.close()
