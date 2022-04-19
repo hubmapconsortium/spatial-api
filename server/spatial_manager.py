@@ -81,17 +81,18 @@ class SpatialManager(object):
             id: int = self.postgresql_manager.insert(sql)
             logger.info(f"Inserting geom record as; id={id}")
 
-    def find_within_radius(self, radius: float) -> List[int]:
+    def find_within_radius_at_origin(self, radius: float, origin: dict) -> List[int]:
         sql: str = f"""SELECT id FROM {TABLE}
-        WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ(0 0 0)'), {radius});
+        WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ({origin['x']} {origin['y']} {origin['z']})'), {radius});
         """
         return self.postgresql_manager.select(sql)
+
 
 # NOTE: run '$ ./scripts/create_tables.sh' to get a clean database before doing this.
 if __name__ == '__main__':
     manager = SpatialManager()
-    manager.insert_organ_data('RK')
+    #manager.insert_organ_data('RK')
     #import pdb; pdb.set_trace()
-    ids: List[int] = manager.find_within_radius(23.0)
+    ids: List[int] = manager.find_within_radius_at_origin(23.0, {'x': 0, 'y': 0, 'z': 0})
     logger.info(f'Ids of geometries matching the search: {", ". join([str(id) for id in ids]) }')
     manager.close()
