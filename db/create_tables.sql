@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
 SELECT postgis_version();
 
+DROP TABLE IF EXISTS "public"."sample";
 CREATE TABLE IF NOT EXISTS "public"."sample" (
     "id" serial,
     "uuid" text NOT NULL,
@@ -15,7 +16,7 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
 -- http://www.bostongis.com/postgis_quickguide_1_4.bqg
 ALTER TABLE "public"."sample" ADD COLUMN IF NOT EXISTS geom geometry(MULTIPOLYGONZ,0);
 ALTER TABLE "public"."sample" ALTER COLUMN geom SET NOT NULL;
-CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST( "geom" );
+CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(geom);
 
 DROP TABLE IF EXISTS "public"."geom_test";
 CREATE TABLE IF NOT EXISTS "public"."geom_test" (

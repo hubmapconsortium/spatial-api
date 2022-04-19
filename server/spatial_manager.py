@@ -68,19 +68,22 @@ class SpatialManager(object):
                f" {rec['scaling']['value']['x']}, {rec['scaling']['value']['y']}, {rec['scaling']['value']['z']})," \
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
-    def create_insert(self, table: str, rec: dict) -> str:
+    def create_sql_insert(self, table: str, rec: dict) -> str:
         return f"INSERT INTO {table} (uuid, hubmap_id, organ_uuid, organ_organ, geom)" \
-               f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}', {self.create_geometry(rec['spatial_data'])});"
+               f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}'," \
+               f" {self.create_geometry(rec['spatial_data'])})" \
+               f" RETURNING id;"
 
-    def insert_organ_data(self, table: str, organ: str) -> None:
+    def insert_organ_data(self, organ: str) -> None:
         recs: List[dict] = self.neo4j_manager.query_organ(organ)
         for rec in recs:
-            statement: str = self.create_insert(table, rec)
-            import pdb; pdb.set_trace()
-            self.postgresql_manager.insert(statement)
+            sql: str = self.create_sql_insert('public.sample', rec)
+            id: int = self.postgresql_manager.insert(sql)
+            logger.info(f"Inserting geom record as; id={id}")
+
 
 if __name__ == '__main__':
     manager = SpatialManager()
-    manager.insert_organ_data('"public"."sample"', 'RK')
-    import pdb; pdb.set_trace()
+    manager.insert_organ_data('RK')
+    #import pdb; pdb.set_trace()
     manager.close()

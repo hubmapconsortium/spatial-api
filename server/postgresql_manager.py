@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 # pylint: disable=no-name-in-module
 from psycopg2.errors import UniqueViolation
-from typing import List
+from typing import List, Tuple
 import configparser
 import logging
 
@@ -31,13 +31,44 @@ class PostgresqlManager(object):
         self.conn = psycopg2.connect(**connection)
         #import pdb; pdb.set_trace()
 
-    def close(self):
+    def close(self) -> None:
         self.conn.close()
 
-    def insert(self, statement):
-        cursor = self.conn.cursor()
-        cursor.execute(statement)
-        cursor.close()
+    def commit(self) -> None:
+        self.conn.commit()
+
+    # https://www.postgresqltutorial.com/postgresql-python/insert/
+    def insert(self, args: Tuple[str, str, str, str, str]) -> int:
+        sql: str = """
+        INSERT INTO sample (uuid, hubmap_id, organ_uuid, organ_organ, geom)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id;
+        """
+        id : int= None
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql, args)
+            # get the generated id back
+            id = cursor.fetchone()[0]
+            self.conn.commit()
+            cursor.close()
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        return id
+
+    def insert(self, sql: str) -> int:
+        id: int = None
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            # get the generated id back
+            id = cursor.fetchone()[0]
+            #import pdb; pdb.set_trace()
+            self.conn.commit()
+            cursor.close()
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        return id
 
 
 if __name__ == '__main__':
