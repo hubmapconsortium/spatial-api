@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
     "hubmap_id" text NOT NULL,
     "organ_uuid" text NOT NULL,
     "organ_organ" text NOT NULL,
+    "geom_data" text NOT NULL,
     PRIMARY KEY ("id")
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis

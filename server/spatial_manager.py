@@ -2,6 +2,7 @@ import logging
 from typing import List
 from neo4j_manager import Neo4jManager
 from postgresql_manager import PostgresqlManager, TABLE
+import json
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -69,9 +70,9 @@ class SpatialManager(object):
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
     def create_sql_insert(self, rec: dict) -> str:
-        return f"INSERT INTO {TABLE} (uuid, hubmap_id, organ_uuid, organ_organ, geom)" \
+        return f"INSERT INTO {TABLE} (uuid, hubmap_id, organ_uuid, organ_organ, geom_data, geom)" \
                f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}'," \
-               f" {self.create_geometry(rec['spatial_data'])})" \
+               f" '{json.dumps(rec)}', {self.create_geometry(rec['spatial_data'])})" \
                f" RETURNING id;"
 
     def insert_organ_data(self, organ: str) -> None:
@@ -87,12 +88,26 @@ class SpatialManager(object):
         """
         return self.postgresql_manager.select(sql)
 
+    def find_within_radius_at_hubmap_id(self, radius: float, hubmap_id: str) -> List[int]:
+        sql: str = f"""SELECT geom_data FROM {TABLE}
+        WHERE hubmap_id = '{hubmap_id}';
+        """
+        recs: List[str] = self.postgresql_manager.select(sql)
+        if len(recs) != 1:
+            logger.error(f'Query against a single hubmap_uuid={hubmap_id} did not return just one item.')
+            return []
+        rec: str = json.loads(recs[0])
+        return self.find_within_radius_at_origin(radius, rec['spatial_data']['translation']['value'])
+
 
 # NOTE: run '$ ./scripts/create_tables.sh' to get a clean database before doing this.
+# TODO: Nothing is being done with units.
 if __name__ == '__main__':
     manager = SpatialManager()
     #manager.insert_organ_data('RK')
     #import pdb; pdb.set_trace()
     ids: List[int] = manager.find_within_radius_at_origin(23.0, {'x': 0, 'y': 0, 'z': 0})
-    logger.info(f'Ids of geometries matching the search: {", ". join([str(id) for id in ids]) }')
+    logger.info(f'Ids of geometries matching the search at origin: {", ". join([str(id) for id in ids]) }')
+    ids: List[int] = manager.find_within_radius_at_hubmap_id(0.25, 'HBM634.MMGK.572')
+    logger.info(f'Ids of geometries matching the search at organ: {", ". join([str(id) for id in ids]) }')
     manager.close()

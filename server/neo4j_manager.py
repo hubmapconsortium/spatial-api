@@ -108,7 +108,7 @@ class Neo4jManager(object):
             " organ.organ AS organ_name, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
         return self.query_with_cypher(cypher)
 
-    def query_organ(self, organ):
+    def query_organ(self, organ) -> List[dict]:
         cypher: str =\
             "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
             f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
