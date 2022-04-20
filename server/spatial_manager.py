@@ -94,7 +94,7 @@ class SpatialManager(object):
         """
         recs: List[str] = self.postgresql_manager.select(sql)
         if len(recs) != 1:
-            logger.error(f'Query against a single hubmap_uuid={hubmap_id} did not return just one item.')
+            logger.error(f'Query against a single hubmap_id={hubmap_id} did not return just one item.')
             return []
         rec: str = json.loads(recs[0])
         return self.find_within_radius_at_origin(radius, rec['spatial_data']['translation']['value'])
