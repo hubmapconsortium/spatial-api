@@ -5,21 +5,19 @@ RUN apk add --no-cache --update build-base gcc libc-dev libffi-dev linux-headers
 ENV VIRTUAL_ENV=/app
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
 RUN python3 -m pip install --upgrade pip
 
-# Change to directory that contains the Dockerfile
-WORKDIR /app/server
+WORKDIR /app
+COPY requirements.txt .
+COPY server/resources/app.properties resources
+RUN pip install -r requirements.txt
 
-# Copy from host to image
+WORKDIR /app/server
 COPY server/spatialapi spatialapi
+#ENV PYTHONPATH="${PYTHONPATH}:/app/server"
 COPY server/log log
 COPY server/uwsgi.ini .
 COPY server/wsgi.py .
-COPY server/requirements.txt .
-
-RUN pip install -r requirements.txt && \
-    apk --purge del build-base gcc linux-headers postgresql-dev
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime.
 # EXPOSE does not make the ports of the container accessible to the hos

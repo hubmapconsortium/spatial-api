@@ -1,7 +1,7 @@
 import logging
 from typing import List
-from neo4j_manager import Neo4jManager
-from postgresql_manager import PostgresqlManager
+from spatialapi.manager.neo4j_manager import Neo4jManager
+from spatialapi.manager.postgresql_manager import PostgresqlManager
 import json
 import configparser
 
