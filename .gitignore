@@ -1,4 +1,6 @@
 **~
 .idea
 venv/
-server/__pycache__/
+**/__pycache__/
+server/log
+

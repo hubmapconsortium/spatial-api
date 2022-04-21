@@ -14,4 +14,4 @@ POSTGRES_DB=spatial
 #EOSQL
 
 echo "Creating tables in database..."
-psql -v ON_ERROR_STOP=1 -h localhost -p 5433 -U $POSTGRES_USER -d $POSTGRES_DB -a -f ./db/create_tables.sql
+psql -v ON_ERROR_STOP=1 -h localhost -p 5433 -U $POSTGRES_USER -d $POSTGRES_DB -a -f ./db/init.d/initdb.sql

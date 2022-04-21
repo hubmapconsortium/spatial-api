@@ -1,5 +1,4 @@
 import neo4j
-import configparser
 import logging
 from ast import literal_eval
 from typing import List
@@ -12,9 +11,7 @@ logger = logging.getLogger(__name__)
 
 class Neo4jManager(object):
 
-    def __init__(self):
-        config = configparser.ConfigParser()
-        config.read('resources/app.properties')
+    def __init__(self, config):
         neo4j_config = config['neo4j']
         server: str = neo4j_config.get('Server')
         username: str = neo4j_config.get('Username')
@@ -90,7 +87,6 @@ class Neo4jManager(object):
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
             for record in results:
-                # import pdb; pdb.set_trace()
                 results_n = results_n + 1
                 processed_rec: dict = self.process_record(record)
                 if processed_rec is not None:
@@ -118,10 +114,3 @@ class Neo4jManager(object):
 
     def query_right_kidney(self) -> List[dict]:
         return self.query_organ('RK')
-
-
-if __name__ == '__main__':
-    manager = Neo4jManager()
-    recs: List[dict] = manager.query_right_kidney()
-    import pdb; pdb.set_trace()
-    manager.close()

@@ -1,8 +1,9 @@
 import logging
 from typing import List
 from neo4j_manager import Neo4jManager
-from postgresql_manager import PostgresqlManager, TABLE
+from postgresql_manager import PostgresqlManager
 import json
+import configparser
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -12,9 +13,11 @@ logger = logging.getLogger(__name__)
 
 class SpatialManager(object):
 
-    def __init__(self):
-        self.neo4j_manager = Neo4jManager()
-        self.postgresql_manager = PostgresqlManager()
+    def __init__(self, config):
+        spatial_config = config['spatial']
+        self.table = spatial_config.get('Table')
+        self.neo4j_manager = Neo4jManager(config)
+        self.postgresql_manager = PostgresqlManager(config)
 
     def close(self):
         self.neo4j_manager.close()
@@ -70,7 +73,7 @@ class SpatialManager(object):
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
     def create_sql_insert(self, rec: dict) -> str:
-        return f"INSERT INTO {TABLE} (uuid, hubmap_id, organ_uuid, organ_organ, geom_data, geom)" \
+        return f"INSERT INTO {self.table} (uuid, hubmap_id, organ_uuid, organ_organ, geom_data, geom)" \
                f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}'," \
                f" '{json.dumps(rec)}', {self.create_geometry(rec['spatial_data'])})" \
                f" RETURNING id;"
@@ -83,13 +86,13 @@ class SpatialManager(object):
             logger.info(f"Inserting geom record as; id={id}")
 
     def find_within_radius_at_origin(self, radius: float, origin: dict) -> List[int]:
-        sql: str = f"""SELECT id FROM {TABLE}
+        sql: str = f"""SELECT id FROM {self.table}
         WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ({origin['x']} {origin['y']} {origin['z']})'), {radius});
         """
         return self.postgresql_manager.select(sql)
 
     def find_within_radius_at_hubmap_id(self, radius: float, hubmap_id: str) -> List[int]:
-        sql: str = f"""SELECT geom_data FROM {TABLE}
+        sql: str = f"""SELECT geom_data FROM {self.table}
         WHERE hubmap_id = '{hubmap_id}';
         """
         recs: List[str] = self.postgresql_manager.select(sql)
@@ -103,7 +106,9 @@ class SpatialManager(object):
 # NOTE: run '$ ./scripts/create_tables.sh' to get a clean database before doing this.
 # TODO: Nothing is being done with units.
 if __name__ == '__main__':
-    manager = SpatialManager()
+    config = configparser.ConfigParser()
+    config.read('../../resources/app.properties')
+    manager = SpatialManager(config)
     #manager.insert_organ_data('RK')
     #import pdb; pdb.set_trace()
     ids: List[int] = manager.find_within_radius_at_origin(23.0, {'x': 0, 'y': 0, 'z': 0})

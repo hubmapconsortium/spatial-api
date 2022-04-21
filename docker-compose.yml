@@ -1,16 +1,22 @@
-version: '3'
+version: '3.7'
+
 services:
-  db:
-    container_name: db
+  spatial-api:
+    container_name: spatial-api
     build:
       context: .
-      dockerfile: Dockerfile-db
+      dockerfile: Dockerfile
     restart: always
     environment:
-      POSTGRES_USER: spatial
-      POSTGRES_PASSWORD: test4now
-      POSTGRES_DB: spatial
-    ports:
-      - "5433:5432"
+      - HOST_GID=${HOST_GID:-1000}
+      - HOST_UID=${HOST_UID:-1000}
+      - FLASK_APP=spatialapi
+      - FLASK_ENV=development
     volumes:
-      - ./db:/docker-entrypoint-initdb.d/
+      - ./server:/app/server
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    ports:
+      - '5001:5000'
