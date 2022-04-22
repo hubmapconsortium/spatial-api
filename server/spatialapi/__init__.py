@@ -16,11 +16,12 @@ def create_app(testing=False):
 
     app.register_blueprint(search_hubmap_id_to_radius_blueprint)
 
-    config = configparser.ConfigParser()
-    app_properties: str = 'resources/app.properties'
-    logger.info(f'Reading properties file: {app_properties}')
-    config.read(app_properties)
-    g.spatial_manager = SpatialManager(config)
+    with app.app_context():
+        config = configparser.ConfigParser()
+        app_properties: str = 'resources/app.properties'
+        logger.info(f'Reading properties file: {app_properties}')
+        config.read(app_properties)
+        g.spatial_manager = SpatialManager(config)
 
     @app.before_request
     def before_request():

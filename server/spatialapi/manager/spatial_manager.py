@@ -18,8 +18,10 @@ class SpatialManager(object):
         self.table = spatial_config.get('Table')
         self.neo4j_manager = Neo4jManager(config)
         self.postgresql_manager = PostgresqlManager(config)
+        logger.info(f'SpatialManager: Table: {self.table}')
 
     def close(self):
+        logger.info(f'Neo4jManager: Closing connection to Neo4J & PostgreSQL')
         self.neo4j_manager.close()
         self.postgresql_manager.close()
 
@@ -78,12 +80,16 @@ class SpatialManager(object):
                f" '{json.dumps(rec)}', {self.create_geometry(rec['spatial_data'])})" \
                f" RETURNING id;"
 
+    def insert_rec(self, rec) -> None:
+        sql: str = self.create_sql_insert(rec)
+        id: int = self.postgresql_manager.insert(sql)
+        logger.info(f"Inserting geom record as; id={id}")
+
     def insert_organ_data(self, organ: str) -> None:
+        logger.info(f"Inserting data for organ: {organ}")
         recs: List[dict] = self.neo4j_manager.query_organ(organ)
         for rec in recs:
-            sql: str = self.create_sql_insert(rec)
-            id: int = self.postgresql_manager.insert(sql)
-            logger.info(f"Inserting geom record as; id={id}")
+            self.insert_rec(rec)
 
     def find_within_radius_at_origin(self, radius: float, origin: dict) -> List[int]:
         sql: str = f"""SELECT id FROM {self.table}
@@ -103,7 +109,8 @@ class SpatialManager(object):
         return self.find_within_radius_at_origin(radius, rec['spatial_data']['translation']['value'])
 
 
-# NOTE: run '$ ./scripts/create_tables.sh' to get a clean database before doing this.
+# NOTE: When running in a local docker container the tables are created automatically.
+# NOTE: Otherwise, to create the tables run '$ ./scripts/create_tables.sh' to get a clean database.
 # TODO: Nothing is being done with units.
 if __name__ == '__main__':
     config = configparser.ConfigParser()
