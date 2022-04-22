@@ -1,8 +1,6 @@
 from flask import g, Flask
 import logging
 import time
-import configparser
-from spatialapi.manager.spatial_manager import SpatialManager
 from spatialapi.search_hubmap_id import search_hubmap_id_to_radius_blueprint
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
@@ -17,13 +15,6 @@ def create_app(testing=False):
 
     app.register_blueprint(search_hubmap_id_to_radius_blueprint)
 
-    with app.app_context():
-        config = configparser.ConfigParser()
-        app_properties: str = 'resources/app.properties'
-        logger.info(f'create_app: Reading properties file: {app_properties}')
-        config.read(app_properties)
-        g.spatial_manager = SpatialManager(config)
-
     @app.route("/")
     def hello():
         return "Hello World!"
@@ -31,13 +22,12 @@ def create_app(testing=False):
     @app.before_request
     def before_request():
         start_time = time.time()
-        logger.info(f"before_request: time {start_time}")
         g.request_start_time = start_time
 
     @app.teardown_request
     def teardown_request(exception=None):
         diff = time.time() - g.request_start_time
-        logger.info(f'teardown_request: Request runtime: {diff}')
+        logger.info(f'teardown_request: Request runtime: {round(diff, 3)*1000.0} msec')
 
     @app.teardown_appcontext
     def close_db(error): # pylint: disable=unused-argument
