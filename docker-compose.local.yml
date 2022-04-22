@@ -4,6 +4,7 @@ version: '3.7'
 services:
   db:
     container_name: db
+    hostname: db
     build:
       context: .
       dockerfile: Dockerfile-db
@@ -12,8 +13,15 @@ services:
       POSTGRES_USER: spatial
       POSTGRES_PASSWORD: test4now
       POSTGRES_DB: spatial
+    networks:
+      - shared-web
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       # The official postgres docker image will run .sql scripts found in the /docker-entrypoint-initdb.d/ folder.
       - ./db/initdb.d:/docker-entrypoint-initdb.d/
+      - ./server/resources/app.properties:/app/server/resources/app.properties
+
+networks:
+  shared-web:
+    external: true

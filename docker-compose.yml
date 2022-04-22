@@ -3,6 +3,7 @@ version: '3.7'
 services:
   spatial-api:
     container_name: spatial-api
+    hostname: spatial-api
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,6 +13,8 @@ services:
       - HOST_UID=${HOST_UID:-1000}
       - FLASK_APP=spatialapi
       - FLASK_ENV=development
+    networks:
+      - shared-web
     volumes:
       - ./server:/app/server
     deploy:
@@ -20,3 +23,7 @@ services:
           memory: 256M
     ports:
       - '5001:5000'
+
+networks:
+  shared-web:
+    external: true

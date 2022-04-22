@@ -107,7 +107,7 @@ class SpatialManager(object):
 # TODO: Nothing is being done with units.
 if __name__ == '__main__':
     config = configparser.ConfigParser()
-    config.read('../../resources/app.properties')
+    config.read('resources/app.local.properties')
     manager = SpatialManager(config)
     manager.insert_organ_data('RK')
     #import pdb; pdb.set_trace()

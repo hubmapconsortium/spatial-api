@@ -47,4 +47,4 @@ fi
 echo "*** Using python3 venv in ${VENV}"
 source ${VENV}/bin/activate
 
-(cd ./spatialapi/manager; python3 ./spatial_manager.py)
+(cd ../server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py)

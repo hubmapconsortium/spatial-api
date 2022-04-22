@@ -22,6 +22,7 @@ class PostgresqlManager(object):
         }
         if len(host_port) > 1:
             connection['port'] = host_port[1]
+        logger.info(f"Username: {postgresql_config.get('Username')} Server: {postgresql_config.get('Server')}")
         self.conn = psycopg2.connect(**connection)
 
     def close(self) -> None:
