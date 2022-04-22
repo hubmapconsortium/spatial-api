@@ -16,7 +16,7 @@ class Neo4jManager(object):
         server: str = neo4j_config.get('Server')
         username: str = neo4j_config.get('Username')
         password: str = neo4j_config.get('Password')
-        logger.info(f'Neo4jManager: Username: {username} Password: {password} Server: {server}')
+        logger.info(f'Neo4jManager: Username: {username} Server: {server}')
         self.driver = neo4j.GraphDatabase.driver(server, auth=(username, password))
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
