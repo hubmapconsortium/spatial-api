@@ -92,7 +92,7 @@ class SpatialManager(object):
             self.insert_rec(rec)
 
     def find_within_radius_at_origin(self, radius: float, origin: dict) -> List[int]:
-        sql: str = f"""SELECT id FROM {self.table}
+        sql: str = f"""SELECT hubmap_id FROM {self.table}
         WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ({origin['x']} {origin['y']} {origin['z']})'), {radius});
         """
         return self.postgresql_manager.select(sql)
@@ -110,16 +110,17 @@ class SpatialManager(object):
 
 
 # NOTE: When running in a local docker container the tables are created automatically.
-# NOTE: Otherwise, to create the tables run '$ ./scripts/create_tables.sh' to get a clean database.
 # TODO: Nothing is being done with units.
 if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('resources/app.local.properties')
     manager = SpatialManager(config)
+    # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
+    # RK:
+    # description: Kidney (Right)
+    # iri: http://purl.obolibrary.org/obo/UBERON_0004539
+    # https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml
     manager.insert_organ_data('RK')
-    #import pdb; pdb.set_trace()
-    # ids: List[int] = manager.find_within_radius_at_origin(23.0, {'x': 0, 'y': 0, 'z': 0})
-    # logger.info(f'Ids of geometries matching the search at origin: {", ". join([str(id) for id in ids]) }')
-    # ids: List[int] = manager.find_within_radius_at_hubmap_id(0.25, 'HBM634.MMGK.572')
-    # logger.info(f'Ids of geometries matching the search at organ: {", ". join([str(id) for id in ids]) }')
+    manager.insert_organ_data('LK')
+
     manager.close()

@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+  spatial-api:
+    hostname: spatial-api
+    container_name: spatial-api
+    # Use the published image from DockerHub instead of local build
+    # Exit with an error message containing err if SPATIAL_API_VERSION is unset or empty in the environment
+    image: hubmap/spatial-api:${SPATIAL_API_VERSION:?err}
+    environment:
+      - HOST_GID=${HOST_GID:-1000}
+      - HOST_UID=${HOST_UID:-1000}
+      - FLASK_APP=spatialapi
+      - FLASK_ENV=development
+    init: true
+    restart: always
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "http://hubmap-auth:8888" ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gateway_hubmap
+    volumes:
+      - ./server:/app/server
+    ports:
+      - '5000:5000'
+
+networks:
+  gateway_hubmap:
+    external: true

@@ -27,6 +27,6 @@ def search_hubmap_id_to_radius(id, r):
     spatial_manager = SpatialManager(config)
     results = spatial_manager.find_within_radius_at_hubmap_id(r, id)
     logger.info(f'search_hubmap_id_to_radius; find_within_radius_at_hubmap_id({id},{r}): {results}')
-    response = make_response(jsonify(ids=results), 200)
+    response = make_response(jsonify(hubmap_ids=results), 200)
     response.headers["Content-Type"] = "application/json"
     return response
