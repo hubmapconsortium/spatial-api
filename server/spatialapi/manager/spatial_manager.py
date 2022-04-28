@@ -75,9 +75,13 @@ class SpatialManager(object):
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
     def create_sql_insert(self, rec: dict) -> str:
-        return f"INSERT INTO {self.table} (uuid, hubmap_id, organ_uuid, organ_organ, geom_data, geom)" \
-               f" VALUES ('{rec['uuid']}', '{rec['hubmap_id']}', '{rec['organ']['uuid']}', '{rec['organ']['organ']}'," \
-               f" '{json.dumps(rec)}', {self.create_geometry(rec['spatial_data'])})" \
+        return f"INSERT INTO {self.table} (uuid, hubmap_id, organ_uuid, organ_code, donor_uuid, donor_sex, geom_data, geom)" \
+               " VALUES (" \
+               f"'{rec['uuid']}', '{rec['hubmap_id']}', " \
+               f"'{rec['organ']['uuid']}', '{rec['organ']['code']}', " \
+               f"'{rec['donor']['uuid']}', '{rec['donor']['sex']}', " \
+               f"'{json.dumps(rec['spatial_data'])}', {self.create_geometry(rec['spatial_data'])}" \
+               f")" \
                f" RETURNING id;"
 
     def insert_rec(self, rec) -> None:
@@ -105,8 +109,8 @@ class SpatialManager(object):
         if len(recs) != 1:
             logger.error(f'Query against a single hubmap_id={hubmap_id} did not return just one item.')
             return []
-        rec: str = json.loads(recs[0])
-        return self.find_within_radius_at_origin(radius, rec['spatial_data']['translation']['value'])
+        geom_data: str = json.loads(recs[0])
+        return self.find_within_radius_at_origin(radius, geom_data['translation']['value'])
 
 
 # NOTE: When running in a local docker container the tables are created automatically.

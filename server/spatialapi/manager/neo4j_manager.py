@@ -1,5 +1,6 @@
 import neo4j
 import logging
+import json
 from ast import literal_eval
 from typing import List
 
@@ -24,12 +25,27 @@ class Neo4jManager(object):
         logger.info(f'Neo4jManager: Closing connection to Neo4J')
         self.driver.close()
 
-    @staticmethod
-    def process_record(record: dict) -> dict:
+    def search_organ_donor_data_for_grouping_concept_preferred_term(self,
+                                                                    organ_donor_data_list: List[dict],
+                                                                    grouping_concept_preferred_term: str) -> str:
+        for organ_donor_data in organ_donor_data_list:
+            if organ_donor_data["grouping_concept_preferred_term"] == grouping_concept_preferred_term:
+                return organ_donor_data["preferred_term"].lower()
+        return None
+
+    def process_record(self, record: dict) -> dict:
         try:
             uuid: str = record.get('uuid')
             hubmap_id: str = record.get('hubmap_id')
-            organ: dict = {'organ': record.get('organ'), 'uuid': record.get('organ_uuid')}
+            organ: dict = {'uuid': record.get('organ_uuid'),
+                           'code': record.get('organ_code')
+                           }
+            donor_metadata: str = record.get('donor_metadata')
+            organ_donor_data: dict = json.loads(donor_metadata)
+            organ_donor_data_list: List[dict] = organ_donor_data['organ_donor_data']
+            donor: dict = {'uuid': record.get('donor_uuid'),
+                           'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
+                           }
             try:
                 rui_location: str = record.get('rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
@@ -76,7 +92,12 @@ class Neo4jManager(object):
                     'units': rui_location_json['placement']['translation_units']
                 },
             }
-            rec: dict = {'uuid': uuid, 'hubmap_id': hubmap_id, 'spatial_data': spatial_data, 'organ': organ}
+            rec: dict = {'uuid': uuid,
+                         'hubmap_id': hubmap_id,
+                         'spatial_data': spatial_data,
+                         'organ': organ,
+                         'donor': donor
+                         }
             return rec
         except KeyError:
             return None
@@ -90,6 +111,7 @@ class Neo4jManager(object):
             for record in results:
                 results_n = results_n + 1
                 processed_rec: dict = self.process_record(record)
+                #import pdb; pdb.set_trace()
                 if processed_rec is not None:
                     recs.append(processed_rec)
                 else:
@@ -106,11 +128,17 @@ class Neo4jManager(object):
         return self.query_with_cypher(cypher)
 
     def query_organ(self, organ) -> List[dict]:
+        # cypher: str =\
+        #     "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
+        #     f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
+        #     " RETURN s.uuid AS uuid, s.hubmap_id AS hubmap_id, s.specimen_type AS specimen_type," \
+        #     " organ.organ AS organ, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
         cypher: str =\
-            "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
-            f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
-            " RETURN s.uuid AS uuid, s.hubmap_id AS hubmap_id, s.specimen_type AS specimen_type," \
-            " organ.organ AS organ, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" \
+            " RETURN distinct s.uuid as uuid, s.hubmap_id AS hubmap_id, s.rui_location as rui_location," \
+            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
+            " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)
 
     def query_right_kidney(self) -> List[dict]:

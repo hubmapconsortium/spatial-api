@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
     "uuid" text NOT NULL,
     "hubmap_id" text NOT NULL,
     "organ_uuid" text NOT NULL,
-    "organ_organ" text NOT NULL,
+    "organ_code" text NOT NULL,
+    "donor_uuid" text NOT NULL,
+    "donor_sex" text NOT NULL,
     "geom_data" text NOT NULL,
     PRIMARY KEY ("id")
 );
