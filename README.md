@@ -164,7 +164,7 @@ If you delete one of the Docker images (say the `spatial-api_web-1` container) t
 $ ./scripts/run_local.sh
 ```
 
-You will not need create the tables on the PostgreSQL database that is running in the container
+You will not need to create the tables on the PostgreSQL database that is running in the container
 as this is done when the database starts up as it by default reads the file `db/initdb.d/initdb.sql`.
 
 Now that the tables exist, you will need to load some data into them from Elastic Search.
@@ -183,11 +183,13 @@ $ ./scripts/search_hubmap_id.sh
 It was important to verify that the manner in which we are loading spatial data into the `sample` table produces
 the results that we were expecting.
 In order to do this "well behaved" data was constructed in the `geom_test` table.
-Several 10x10x10 cubes were created and spaced at different intervals by a `Translate`.
-The `db/run_test.sql` file contains a comment which represents the distance between the origin `POINTZ(0 0 0)'`
+Several 5x5x5 cubes were created and spaced at different intervals by a `Translate`.
+The `db/run_test.sql` file contains a comment which represents the distance between the origin `POINTZ(0 0 0)`
 and a radius (computed using the Pythagorean theorem). A pair of queries are used for each cube.
-The first uses a radius which is just a tiny bit shy of the radius that the cube should be found.
-The second uses a radius which is just at where a cube should be found.
+The first query uses a radius which is just a tiny bit shy of the radius that the cube should be found.
+The second query uses a radius which is just at the radius where the Pythagorean theorem says that the cube should be found.
+
+Here are the first two queries of the test script which illustrates this.
 ```bash
 $ ./scripts/run_test.sh
 Running test queries...
@@ -212,3 +214,20 @@ at radius `17.320`, but is found at radius `17.321` which is where the Pythagore
 -- sqrt(10^2 + 10^2 + 10^2) = 17.321
 ```
 says that it should be found.
+
+This cube corresponds to the first cube created in the `db/initdb.d/iniddb.sql` file.
+```bash
+INSERT INTO "public"."geom_test" (geom)
+  VALUES (ST_Translate(ST_GeomFromText('MULTIPOLYGON Z(
+        ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
+        ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),
+        ((-5 -5 -5, -5 -5 5, 5 -5 5, 5 -5 -5, -5 -5 -5)),
+        ((-5 5 -5, -5 5 5, 5 5 5, 5 5 -5, -5 5 -5)),
+        ((-5 -5 5, -5 5 5, 5 5 5, -5 5 5, -5 -5 5)),
+        ((5 -5 -5, 5 -5 5, 5 5 5, 5 5 -5, 5 -5 -5)) )'),
+         15, 15, 15));
+```
+This is a cube of size `10x10x10` created at the default origin `POINTZ(0 0 0)`, and translated 15 in the X, Y, and Z direction.
+This would place the closest point of the cube on any axis with the origin of `POINTZ(0 0 0)` at a radius of `15-5=10`.
+Where `15` represents the location of the centroid (from the Translate),
+and `-5=-10/2` the closest point of a `10x10x10` cube located at that centroid.
