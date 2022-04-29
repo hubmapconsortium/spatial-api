@@ -35,8 +35,6 @@ class Neo4jManager(object):
 
     def process_record(self, record: dict) -> dict:
         try:
-            uuid: str = record.get('uuid')
-            hubmap_id: str = record.get('hubmap_id')
             organ: dict = {'uuid': record.get('organ_uuid'),
                            'code': record.get('organ_code')
                            }
@@ -47,7 +45,7 @@ class Neo4jManager(object):
                            'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
                            }
             try:
-                rui_location: str = record.get('rui_location')
+                rui_location: str = record.get('sample_rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
             except (SyntaxError, ValueError) as e:
                 logger.info(f'Error literal_eval parsing: {record}')
@@ -92,9 +90,12 @@ class Neo4jManager(object):
                     'units': rui_location_json['placement']['translation_units']
                 },
             }
-            rec: dict = {'uuid': uuid,
-                         'hubmap_id': hubmap_id,
-                         'spatial_data': spatial_data,
+            sample: dict = {'uuid': record.get('sample_uuid'),
+                            'hubmap_id': record.get('sample_hubmap_id'),
+                            'specimen_type': record.get('sample_specimen_type'),
+                            'spatial_data': spatial_data
+                            }
+            rec: dict = {'sample': sample,
                          'organ': organ,
                          'donor': donor
                          }
@@ -136,7 +137,7 @@ class Neo4jManager(object):
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
             f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" \
-            " RETURN distinct s.uuid as uuid, s.hubmap_id AS hubmap_id, s.rui_location as rui_location," \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id, s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
             " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
             " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)

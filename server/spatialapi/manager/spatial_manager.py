@@ -64,6 +64,7 @@ class SpatialManager(object):
                f",{self.create_XY_plane_at_Z({'x': xyz['x']/2, 'y': xyz['y']/2, 'z': xyz['z']/2})}" \
                f" )'"
 
+    # TODO: We are doing NOTHING with 'units' here...
     def create_geometry(self, rec: dict) -> str:
         geom: str = self.create_multipolygon_geom(rec['dimension']['value'])
         return "ST_Translate(" \
@@ -75,12 +76,15 @@ class SpatialManager(object):
                f" {rec['translation']['value']['x']}, {rec['translation']['value']['y']}, {rec['translation']['value']['z']})"
 
     def create_sql_insert(self, rec: dict) -> str:
-        return f"INSERT INTO {self.table} (uuid, hubmap_id, organ_uuid, organ_code, donor_uuid, donor_sex, geom_data, geom)" \
-               " VALUES (" \
-               f"'{rec['uuid']}', '{rec['hubmap_id']}', " \
+        return f"INSERT INTO {self.table}" \
+               " (organ_uuid, organ_code," \
+               " donor_uuid, donor_sex," \
+               " sample_uuid, sample_hubmap_id, sample_specimen_type, sample_spatial_data, sample_geom" \
+               ") VALUES (" \
                f"'{rec['organ']['uuid']}', '{rec['organ']['code']}', " \
                f"'{rec['donor']['uuid']}', '{rec['donor']['sex']}', " \
-               f"'{json.dumps(rec['spatial_data'])}', {self.create_geometry(rec['spatial_data'])}" \
+               f"'{rec['sample']['uuid']}', '{rec['sample']['hubmap_id']}', '{rec['sample']['specimen_type']}', " \
+               f"'{json.dumps(rec['sample']['spatial_data'])}', {self.create_geometry(rec['sample']['spatial_data'])}" \
                f")" \
                f" RETURNING id;"
 
@@ -96,18 +100,18 @@ class SpatialManager(object):
             self.insert_rec(rec)
 
     def find_within_radius_at_origin(self, radius: float, origin: dict) -> List[int]:
-        sql: str = f"""SELECT hubmap_id FROM {self.table}
-        WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ({origin['x']} {origin['y']} {origin['z']})'), {radius});
+        sql: str = f"""SELECT sample_hubmap_id FROM {self.table}
+        WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ({origin['x']} {origin['y']} {origin['z']})'), {radius});
         """
         return self.postgresql_manager.select(sql)
 
-    def find_within_radius_at_hubmap_id(self, radius: float, hubmap_id: str) -> List[int]:
-        sql: str = f"""SELECT geom_data FROM {self.table}
-        WHERE hubmap_id = '{hubmap_id}';
+    def find_within_radius_at_sample_hubmap_id(self, radius: float, hubmap_id: str) -> List[int]:
+        sql: str = f"""SELECT sample_spatial_data FROM {self.table}
+        WHERE sample_hubmap_id = '{hubmap_id}';
         """
         recs: List[str] = self.postgresql_manager.select(sql)
         if len(recs) != 1:
-            logger.error(f'Query against a single hubmap_id={hubmap_id} did not return just one item.')
+            logger.error(f'Query against a single sample_hubmap_id={hubmap_id} did not return just one item.')
             return []
         geom_data: str = json.loads(recs[0])
         return self.find_within_radius_at_origin(radius, geom_data['translation']['value'])

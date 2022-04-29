@@ -6,20 +6,21 @@ SELECT postgis_version();
 DROP TABLE IF EXISTS "public"."sample";
 CREATE TABLE IF NOT EXISTS "public"."sample" (
     "id" serial,
-    "uuid" text NOT NULL,
-    "hubmap_id" text NOT NULL,
     "organ_uuid" text NOT NULL,
     "organ_code" text NOT NULL,
     "donor_uuid" text NOT NULL,
     "donor_sex" text NOT NULL,
-    "geom_data" text NOT NULL,
+    "sample_uuid" text NOT NULL,
+    "sample_hubmap_id" text NOT NULL,
+    "sample_specimen_type" text NOT NULL,
+    "sample_spatial_data" text NOT NULL,
     PRIMARY KEY ("id")
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
 -- http://www.bostongis.com/postgis_quickguide_1_4.bqg
-ALTER TABLE "public"."sample" ADD COLUMN IF NOT EXISTS geom geometry(MULTIPOLYGONZ,0);
-ALTER TABLE "public"."sample" ALTER COLUMN geom SET NOT NULL;
-CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(geom);
+ALTER TABLE "public"."sample" ADD COLUMN IF NOT EXISTS sample_geom geometry(MULTIPOLYGONZ,0);
+ALTER TABLE "public"."sample" ALTER COLUMN sample_geom SET NOT NULL;
+CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(sample_geom);
 
 DROP TABLE IF EXISTS "public"."geom_test";
 CREATE TABLE IF NOT EXISTS "public"."geom_test" (

@@ -22,10 +22,10 @@ def search_hubmap_id_to_radius(id, r):
     #     return redirect(redirect_url)
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'
-    logger.info(f'create_app: Reading properties file: {app_properties}')
+    logger.info(f'search_hubmap_id_to_radius: Reading properties file: {app_properties}')
     config.read(app_properties)
     spatial_manager = SpatialManager(config)
-    results = spatial_manager.find_within_radius_at_hubmap_id(r, id)
+    results = spatial_manager.find_within_radius_at_sample_hubmap_id(r, id)
     logger.info(f'search_hubmap_id_to_radius; find_within_radius_at_hubmap_id({id},{r}): {results}')
     response = make_response(jsonify(hubmap_ids=results), 200)
     response.headers["Content-Type"] = "application/json"
