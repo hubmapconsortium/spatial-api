@@ -24,18 +24,22 @@ def spatial_search():
     config.read(app_properties)
     spatial_manager = SpatialManager(config)
 
-    results = {}
+    results = spatial_manager.find_within_point_at_radius_relative_spatial_entry_iri(
+        request_dict['target'],
+        request_dict['radius'],
+        request_dict['x'], request_dict['y'], request_dict['z'])
+
     response = make_response(jsonify(hubmap_ids=results), 200)
     response.headers["Content-Type"] = "application/json"
     return response
 
 def request_validation(request_dict: dict) -> None:
-    required_request_keys: tuple = ("target", "radius", 'x', 'y', 'z')
-    if not all(key in request_dict for key in required_request_keys):
-        abort(json_error(f'Request Body: Must have the following required attributes {required_request_keys}', 400))
     int_instances_keys: tuple = ("radius", 'x', 'y', 'z')
-    if not all(isinstance(value, (int, float)) for value in [request_dict[k] for k in int_instances_keys]):
-        abort(json_error(f'Request Body: The following attributes {int_instances_keys} must have numeric values', 400))
+    required_request_keys: tuple = int_instances_keys + ("target",)
     target_values: list = ['VHMale', 'VHFemale']
+    if not all(key in request_dict for key in required_request_keys):
+        abort(json_error(f'Request Body: must have the following required attributes {required_request_keys}', 400))
+    if not all(isinstance(value, (int, float)) for value in [request_dict[k] for k in int_instances_keys]):
+        abort(json_error(f'Request Body: the following attributes {int_instances_keys} must have numeric values', 400))
     if not request_dict['target'] in target_values:
-        abort(json_error(f'Request Body: The attribute "target" must be one of: {", ".join(target_values)}', 400))
+        abort(json_error(f'Request Body: the attribute "target" must be one of: {", ".join(target_values)}', 400))

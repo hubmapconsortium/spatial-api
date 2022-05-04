@@ -147,6 +147,16 @@ class SpatialManager(object):
         """
         return self.postgresql_manager.select(sql)
 
+    def find_within_point_at_radius_relative_spatial_entry_iri(self,
+                                                               spatial_entry_iri: str,
+                                                               radius: float,
+                                                               x: float, y: float, z: float) -> List[int]:
+        sql: str = f"""SELECT sample_hubmap_id FROM {self.table}
+        WHERE relative_spatial_entry_iri = '{spatial_entry_iri}'
+         AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ({x} {y} {z})'), {radius});
+        """
+        return self.postgresql_manager.select(sql)
+
     def find_within_radius_at_sample_hubmap_id(self, radius: float, hubmap_id: str) -> List[int]:
         sql: str = f"""SELECT sample_rui_location FROM {self.table}
         WHERE sample_hubmap_id = '{hubmap_id}';
