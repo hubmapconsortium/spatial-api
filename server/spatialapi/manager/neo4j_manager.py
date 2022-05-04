@@ -55,45 +55,11 @@ class Neo4jManager(object):
                     rui_location_json['placement']['@type'] != 'SpatialPlacement':
                 logger.info(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
                 return None
-            spatial_data: dict = {
-                'target': rui_location_json['placement']['target'],
-                'dimension': {
-                    'value': {
-                        'x': rui_location_json['x_dimension'],
-                        'y': rui_location_json['y_dimension'],
-                        'z': rui_location_json['z_dimension']
-                    },
-                    'units': rui_location_json['dimension_units']
-                },
-                'scaling': {
-                    'value': {
-                        'x': rui_location_json['placement']['x_scaling'],
-                        'y': rui_location_json['placement']['y_scaling'],
-                        'z': rui_location_json['placement']['z_scaling']
-                    },
-                    'units': rui_location_json['placement']['scaling_units']
-                },
-                'rotation': {
-                    'value': {
-                        'x': rui_location_json['placement']['x_rotation'],
-                        'y': rui_location_json['placement']['y_rotation'],
-                        'z': rui_location_json['placement']['z_rotation']
-                    },
-                    'units': rui_location_json['placement']['rotation_units']
-                },
-                'translation': {
-                    'value': {
-                        'x': rui_location_json['placement']['x_translation'],
-                        'y': rui_location_json['placement']['y_translation'],
-                        'z': rui_location_json['placement']['z_translation']
-                    },
-                    'units': rui_location_json['placement']['translation_units']
-                },
-            }
+
             sample: dict = {'uuid': record.get('sample_uuid'),
                             'hubmap_id': record.get('sample_hubmap_id'),
                             'specimen_type': record.get('sample_specimen_type'),
-                            'spatial_data': spatial_data
+                            'rui_location': rui_location_json
                             }
             rec: dict = {'sample': sample,
                          'organ': organ,

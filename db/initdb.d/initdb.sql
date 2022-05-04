@@ -10,10 +10,11 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
     "organ_code" text NOT NULL,
     "donor_uuid" text NOT NULL,
     "donor_sex" text NOT NULL,
+    "relative_spatial_entry_iri" text NOT NULL,
     "sample_uuid" text NOT NULL,
     "sample_hubmap_id" text NOT NULL,
     "sample_specimen_type" text NOT NULL,
-    "sample_spatial_data" text NOT NULL,
+    "sample_rui_location" text NOT NULL,
     PRIMARY KEY ("id")
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
