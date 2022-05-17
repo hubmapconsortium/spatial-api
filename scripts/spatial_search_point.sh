@@ -2,8 +2,12 @@
 set -e
 set -u
 
+echo
+echo ">>> Testing spatialapi endpoint search_hubmap_point..."
+echo
+
 curl --verbose --request POST \
- --url http://localhost:5001/spatial-search \
+ --url http://localhost:5001/spatial-search/point \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHMale",

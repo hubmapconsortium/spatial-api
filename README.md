@@ -85,11 +85,29 @@ $ docker push hubmap/spatial-api:1.0.2
 ````
 
 ### PROD Documenting the Docker image
+
+Reelase workflow:
+- merge code to the release branch (typically 'master') in github
+- bump the version number in ./VERSION
+- create a new github release and tag
+- publish a new image with new tag to DockerHub
+- SSH into the PROD VM and pull the new image to redeploy
+
+#### Bump the number in ./VERSION
+
+The version found in the Released Version that you will create below must
+match that of the ./VERSION file.
+Change this file before building the Docker image that you will push to Docker HUB.
+The version will show up on [VERSION](https://github.com/hubmapconsortium/spatial-api/blob/master/VERSION).
+
+
+#### Create a new GitHUB Release Tag
+
 For PROD, after you've created the numbered release you should save it in
 the project [Release](https://github.com/hubmapconsortium/spatial-api/releases/) page.
 On this page, click on the `Draft a new release` (white on black) button, or if there are no releases
 click on the `Create a new release` (white on green) button.
-Click on the `Choose a tag` button, enter the tag name, and then the `+ Create new tag: on publish`.
+Click on the `Choose a tag` button, enter the tag name, and then `+ Create new tag: v.?.?.? on publish`.
 The new tag will appear in place of the text on the `Choose a tag` button.
 Create a new release version in the `Release title` box.
 Use the same release number as was used in DockerHub, but prefix it with the letter v (see `Tag suggestion` on the left),
@@ -177,6 +195,42 @@ Once the data is loaded you can conduct some spatial searches using
 ```bash
 $ ./scripts/search_hubmap_id.sh
 ```
+
+# Adding new endpoints
+
+An endpoint should be created in a Python module with its name (e.g., `server/spatialapi/new_endpoint/__init__.py`).
+It should then be registered in the `server/__init__.py` file.
+
+## OpenAPI Spec
+
+The endpoints should be documented using [OpenAPI v3](https://swagger.io/specification/).
+The specification .yml file should be found at the top lever of the project, and named `spatial-api-spec.yml`
+
+### SmartAPI
+
+All of the HubMAP APIs are found [here](https://smart-api.info/registry?q=hubmap).
+They are reloaded from the `master` branch specification .yml file sometime after midnight Eastern Time US.
+
+## hubmapconsortium/gateway
+
+It is important to remember to add each new endpoint to the PROD [hubmapconsortium/gateway branch test-release PROD](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.prod.json)
+and DEV [hubmapconsortium/gateway branch test-release DEV](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.dev.json)
+files under the section for the micro-service (e.g., `spatial-api.dev.hubmapconsortium.org`).
+```bash
+$ git clone  git@github.com:hubmapconsortium/gateway.git
+$ git checkout test-release
+```
+
+Add the endpoint to the section `spatial-api.dev.hubmapconsortium.org` section:
+```json
+  "spatial-api.dev.hubmapconsortium.org": [
+    {
+      "method": "GET",
+      "endpoint": "/codes/<*>/codes",
+      "auth": false
+    },
+```
+
 
 ## Method Verification Data
 
