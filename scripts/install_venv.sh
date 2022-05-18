@@ -6,13 +6,12 @@ VENV=./venv
 
 usage()
 {
-  echo "Usage: $0 [-r] [-R] [-v] [-c] [-h]"
+  echo "Usage: $0 [-R] [-h]"
   echo " -R Reinstall VENV at ${VENV}"
   echo " -h Help"
   exit 2
 }
 
-unset VERBOSE
 while getopts 'Rh' c; do
   echo "Processing $c : OPTIND is $OPTIND"
   case $c in
@@ -46,5 +45,3 @@ fi
 
 echo "*** Using python3 venv in ${VENV}"
 source ${VENV}/bin/activate
-
-(cd ../server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py)

@@ -26,6 +26,14 @@ done
 
 shift $((OPTIND-1))
 
+which python3
+status=$?
+if [[ $status != 0 ]] ; then
+    echo '*** Python3 must be installed!'
+    echo '*** Try running scripts/install_venv.sh'
+    exit
+fi
+
 if [ $DOWN ]; then
   echo ">>> Shut down and destroy containers before bringing them up..."
   echo

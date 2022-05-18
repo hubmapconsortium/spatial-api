@@ -171,30 +171,16 @@ want to use...
   Username = spatial
 ```
 
-To shutdown and remove all containers by executing the following.
-```bash
-$ ./scripts/run_local.sh down -v --rmi all
-```
-
-Then restore the Docker Containers, Networks, and Volumes can be done by executing the following script.
+Then you can restore the Docker Containers, Networks, and Volumes by executing the following script.
 If you delete one of the Docker images (say the `spatial-api_web-1` container) this will rebuild and restart it.
+With the indicated optional parameters `-dlt` it will also reload the data and run the tests.
 ```bash
-$ ./scripts/run_local.sh
+$ ./scripts/run_local.sh -dlt
 ```
 
 You will not need to create the tables on the PostgreSQL database that is running in the container
 as this is done when the database starts up as it by default reads the file `db/initdb.d/initdb.sql`.
 
-Now that the tables exist, you will need to load some data into them from Elastic Search.
-You do this by running the script.
-```bash
-$ ./scripts/insert_organ_data_rk.sh
-```
-
-Once the data is loaded you can conduct some spatial searches using
-```bash
-$ ./scripts/search_hubmap_id.sh
-```
 
 # Adding new endpoints
 
