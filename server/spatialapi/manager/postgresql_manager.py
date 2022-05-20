@@ -27,7 +27,8 @@ class PostgresqlManager(object):
 
     def close(self) -> None:
         logger.info(f'PostgresqlManager: Closing connection to PostgreSQL')
-        self.conn.close()
+        if self.conn is not None:
+            self.conn.close()
 
     def commit(self) -> None:
         self.conn.commit()
@@ -37,13 +38,64 @@ class PostgresqlManager(object):
         try:
             cursor = self.conn.cursor()
             cursor.execute(sql)
+            self.conn.commit()
             # get the generated id back
             id = cursor.fetchone()[0]
-            self.conn.commit()
-            cursor.close()
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
         return id
+
+    def get_cell_marker_id(self, marker: str) -> int:
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute('CALL get_cell_marker_sp(%s, %s)', (marker, '0'))
+            self.conn.commit()
+            results = cursor.fetchone()
+            logger.info(f'get_cell_marker_id({marker}); results: {results}')
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return results[0]
+
+    def create_cell_markers(self, markers: List[str]) -> int:
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute('CALL create_cell_markers_sp(%s, %s)', (markers, []))
+            self.conn.commit()
+            results = cursor.fetchone()
+            logger.info(f'create_cell_markers({markers}); results: {results}')
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return results[0]
+
+    def create_annotation_details(self,
+                                  cell_type_name: str,
+                                  obo_ontology_id_uri: str,
+                                  markers: List[str]) -> int:
+        ontology_id: str = obo_ontology_id_uri.rsplit('/', 1)[-1]
+        logger.info(f'obo_ontology_id_uri end {ontology_id}')
+        ontology_id = ontology_id.replace('_', ' ')
+        logger.info(f'ontology_id: {ontology_id}')
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute('CALL create_annotation_details_sp(%s, %s, %s, %s, %s)',
+                           (cell_type_name, obo_ontology_id_uri, ontology_id, markers, 0))
+            self.conn.commit()
+            results = cursor.fetchone()
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return results[0]
 
     def select(self, sql: str) -> List[int]:
         data: List[int] = None
@@ -52,7 +104,9 @@ class PostgresqlManager(object):
             cursor.execute(sql)
             data = [row[0] for row in cursor.fetchall()]
             logger.info(f'Returned {len(data)} rows')
-            cursor.close()
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
         return data

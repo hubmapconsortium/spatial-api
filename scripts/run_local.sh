@@ -44,9 +44,9 @@ echo
 echo ">>> Create and bring up the database and MSAPI containers..."
 echo
 docker network create shared-web
-docker-compose -f docker-compose.local.yml up -d
+docker-compose -f docker-compose.local.yml up --build -d
 sleep 5
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker-compose.yml up --build -d
 
 if [ $DOWN -a $LOAD ]; then
   echo

@@ -173,7 +173,7 @@ want to use...
 
 Then you can restore the Docker Containers, Networks, and Volumes by executing the following script.
 If you delete one of the Docker images (say the `spatial-api_web-1` container) this will rebuild and restart it.
-With the indicated optional parameters `-dlt` it will also reload the data and run the tests.
+With the indicated optional parameters `-dlt` it will also delete and rebuild the containers, reload the data, and run the tests.
 ```bash
 $ ./scripts/run_local.sh -dlt
 ```
