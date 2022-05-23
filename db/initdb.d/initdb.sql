@@ -24,7 +24,8 @@ CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(s
 
 -- Identify tissue samples that are registered in the spatial database by the types of cells contained within.
 
--- These tables will come from the annotation.l3 table under the Kidney reference for azimuth
+-- These tables (cell_annotation_details, cell_marker, cell_annotation_details_marker) come from data found in the
+-- HTML annotation.l3 table under the Kidney reference for azimuth.
 -- https://azimuth.hubmapconsortium.org/references/#Human%20-%20Kidney
 
 DROP TABLE IF EXISTS "public"."cell_annotation_details";
@@ -50,17 +51,19 @@ CREATE TABLE IF NOT EXISTS "public".cell_annotation_details_marker (
     CONSTRAINT cell_annotation_details_id_cell_marker_id_pkey PRIMARY KEY (cell_annotation_details_id, cell_marker_id)
 );
 
--- Holds a row per cell type per sample.
+-- This table holds a row per cell type per sample.
 -- The cell information can be found in the secondary_analysis.h5ad files in the associated datasets (at the PSC)
 DROP TABLE IF EXISTS "public"."cell_types";
 CREATE TABLE IF NOT EXISTS "public"."cell_types" (
     "id" SERIAL PRIMARY KEY,
     "sample_uuid" text NOT NULL UNIQUE,
     "cell_annotation_details_id" SERIAL REFERENCES cell_annotation_details (id) ON DELETE CASCADE,
-    "cell_type_count" INT NOT NULL,
+    "cell_type_count" BIGINT NOT NULL,
     CONSTRAINT cell_types_sample_uuid_cell_annotation_details_id_key UNIQUE (sample_uuid, cell_annotation_details_id)
 );
 
+--
+-- Stored Procedures
 
 -- Create the marker if it does not exist, but always return the marker id.
 -- Note: OUT arguments are currently not supported.
@@ -116,6 +119,8 @@ BEGIN
 END
 $$;
 
+--
+-- TEST DATA
 
 DROP TABLE IF EXISTS "public"."geom_test";
 CREATE TABLE IF NOT EXISTS "public"."geom_test" (
