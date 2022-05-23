@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS "public"."cell_annotation_details" (
     "id" SERIAL PRIMARY KEY,
     -- 'cell_type_name' is the column 'Label' from the Annotation Details annotation.l3
     "cell_type_name" text NOT NULL UNIQUE,
-    "obo_ontology_id_uri" text NOT NULL UNIQUE,
+    "obo_ontology_id_uri" text NOT NULL,
     -- JUST the OBO label from the 'obo_ontology_id_uri' but with underscores turned into spaces
     "ontology_id" text NOT NULL
 );
