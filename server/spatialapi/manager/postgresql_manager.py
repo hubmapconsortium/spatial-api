@@ -103,6 +103,27 @@ class PostgresqlManager(object):
                 cursor.close()
         return results[0]
 
+    def dump_anotation_detail_of_cell_type_name(self, cell_type_name: str) -> List:
+        sql: str =\
+            "SELECT cad.cell_type_name, cad.obo_ontology_id_uri, array_agg(cm.marker) AS markers " \
+            " FROM public.cell_annotation_details AS cad" \
+            " JOIN public.cell_annotation_details_marker AS cadm ON cadm.cell_annotation_details_id = cad.id" \
+            " LEFT JOIN public.cell_marker AS cm ON cadm.cell_marker_id = cm.id" \
+            f" WHERE cad.cell_type_name = '{cell_type_name}'" \
+            " GROUP BY cad.cell_type_name, cad.obo_ontology_id_uri"
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            data = cursor.fetchall()
+            logger.info(f'Returned {len(data)} rows')
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(e)
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return data[0]
+
+
     def select(self, sql: str) -> List[int]:
         data: List[int] = None
         try:

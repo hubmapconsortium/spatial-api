@@ -72,6 +72,12 @@ if __name__ == '__main__':
     # )
     # logger.info(f"cell_annotation_details: {id}")
 
-    manager.load_annotation_details()
+    #manager.load_annotation_details()
+
+    #cell_type_bame: str = 'Afferent / Efferent Arteriole Endothelial'
+    cell_type_name: str = 'Cortical Collecting Duct Intercalated Type A'
+    annotation_details =\
+        manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(cell_type_name)
+    print(f'annotation_details: {annotation_details}')
 
     manager.close()
