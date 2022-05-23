@@ -5,6 +5,7 @@ from spatialapi.manager.neo4j_manager import Neo4jManager
 from spatialapi.manager.postgresql_manager import PostgresqlManager
 from spatialapi.manager.spatial_placement_manager import SpatialPlacementManager
 from spatialapi.utils import json_error
+from http import HTTPStatus
 import json
 import configparser
 
@@ -171,7 +172,7 @@ class SpatialManager(object):
             """
         recs: List[str] = self.postgresql_manager.select(sql)
         if len(recs) == 0:
-            abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', 400))
+            abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', HTTPStatus.BAD_REQUEST))
         if len(recs) != 1:
             logger.error(f'Query against a single sample_hubmap_id={hubmap_id} returned multiple rows')
         logger.info(f'hubmap_id_rui_location: hubmap_id: {hubmap_id}; rui_location: {recs[0]}')

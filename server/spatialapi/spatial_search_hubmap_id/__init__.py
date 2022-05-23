@@ -2,6 +2,7 @@ from flask import Blueprint, request, abort, redirect, current_app, jsonify, mak
 import configparser
 from spatialapi.manager.spatial_manager import SpatialManager
 from spatialapi.utils import json_error
+from http import HTTPStatus
 import logging
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
@@ -30,7 +31,7 @@ def spatial_search_hubmap_id():
         request_dict['hubmap_id']
     )
 
-    response = make_response(jsonify(hubmap_ids=results), 200)
+    response = make_response(jsonify(hubmap_ids=results), HTTPStatus.OK)
     response.headers["Content-Type"] = "application/json"
     return response
 
@@ -39,8 +40,8 @@ def request_validation(request_dict: dict) -> None:
     required_request_keys: tuple = int_instances_keys + ("target", "hubmap_id", )
     target_values: list = ['VHMale', 'VHFemale']
     if not all(key in request_dict for key in required_request_keys):
-        abort(json_error(f'Request Body: must have the following required attributes {required_request_keys}', 400))
+        abort(json_error(f'Request Body: must have the following required attributes {required_request_keys}', HTTPStatus.BAD_REQUEST))
     if not all(isinstance(value, (int, float)) for value in [request_dict[k] for k in int_instances_keys]):
-        abort(json_error(f'Request Body: the following attributes {int_instances_keys} must have numeric values', 400))
+        abort(json_error(f'Request Body: the following attributes {int_instances_keys} must have numeric values', HTTPStatus.BAD_REQUEST))
     if not request_dict['target'] in target_values:
-        abort(json_error(f'Request Body: the attribute "target" must be one of: {", ".join(target_values)}', 400))
+        abort(json_error(f'Request Body: the attribute "target" must be one of: {", ".join(target_values)}', HTTPStatus.BAD_REQUEST))

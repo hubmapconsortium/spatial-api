@@ -1,6 +1,9 @@
 import psycopg2
 from typing import List
 import logging
+from flask import abort
+from spatialapi.utils import json_error
+from http import HTTPStatus
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -79,7 +82,8 @@ class PostgresqlManager(object):
     def create_annotation_details(self,
                                   cell_type_name: str,
                                   obo_ontology_id_uri: str,
-                                  markers: List[str]) -> int:
+                                  markers: List[str]
+                                  ) -> int:
         ontology_id: str = obo_ontology_id_uri.rsplit('/', 1)[-1]
         logger.info(f'obo_ontology_id_uri end {ontology_id}')
         ontology_id = ontology_id.replace('_', ' ')
@@ -92,6 +96,8 @@ class PostgresqlManager(object):
             results = cursor.fetchone()
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(e)
+            #abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', HTTPStatus.CONFLICT))
+            raise e
         finally:
             if cursor is not None:
                 cursor.close()
