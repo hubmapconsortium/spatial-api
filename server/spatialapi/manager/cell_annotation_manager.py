@@ -25,7 +25,7 @@ class CellAnnotationManager(object):
         logger.info(f'CellAnnotationManager: Closing connection to PostgreSQL')
         self.postgresql_manager.close()
 
-    def load_annotation_details(self):
+    def find_rows_in_azmuth_uri_table(self, table_re: re):
         html_text: str = requests.get(self.azmuth_uri).text
         bs_object = BeautifulSoup(html_text, 'html.parser')
         details =  bs_object \
@@ -36,18 +36,37 @@ class CellAnnotationManager(object):
             .find("div", attrs={"class": "section"}) \
             .find_all("details")
         for detail in details:
-            if detail.find("summary", string=re.compile(r'^.*annotation\.l3.*$')) is not None:
+            if detail.find("summary", string=re.compile(table_re)) is not None:
                 # Skip the header row...
-                rows = detail.find("table").find_all("tr")[1:]
-                for row in rows:
-                    cell_type_name: str = row.select('td:nth-of-type(1)')[0].string.strip()
-                    obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
-                    markers: List[str] = row.select('td:nth-of-type(3)')[0].string.strip().split(',')
-                    markers_stripped: List[str] = [s.strip() for s in markers]
-                    id: int = manager.postgresql_manager.create_annotation_details(
-                        cell_type_name, obo_ontology_id_uri, markers_stripped
-                    )
-                    logger.info(f"cell_annotation_details: {id}")
+                return detail.find("table").find_all("tr")[1:]
+
+    def load_annotation_details(self):
+        rows = self.find_rows_in_azmuth_uri_table(r'^.*annotation\.l3.*$')
+        for row in rows:
+            cell_type_name: str = row.select('td:nth-of-type(1)')[0].string.strip()
+            obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
+            markers: List[str] = row.select('td:nth-of-type(3)')[0].string.strip().split(',')
+            markers_stripped: List[str] = [s.strip() for s in markers]
+            id: int = manager.postgresql_manager.create_annotation_details(
+                cell_type_name, obo_ontology_id_uri, markers_stripped
+            )
+            logger.info(f"cell_annotation_details: {id}")
+
+    def check_annotation_details(self):
+        rows = self.find_rows_in_azmuth_uri_table(r'^.*annotation\.l3.*$')
+        for row in rows:
+            cell_type_name: str = row.select('td:nth-of-type(1)')[0].string.strip()
+            obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
+            markers: List[str] = row.select('td:nth-of-type(3)')[0].string.strip().split(',')
+            markers_stripped: List[str] = [s.strip() for s in markers]
+            data: List = manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(cell_type_name)
+            if data[0] != cell_type_name:
+                logger.error(f"The cell_type_names do not match web: {cell_type_name}, db: {data[0]}")
+            if data[1] != obo_ontology_id_uri:
+                logger.error(f"The obo_ontology_id_uris do not match web: {obo_ontology_id_uri}, db: {data[1]}")
+            if  sorted(markers_stripped) != sorted(data[2]):
+                logger.error(f"The markers do not match web: {markers_stripped}, db: {data[2]}")
+        logger.info(f'Done! check_annotation_details {len(rows)} processed')
 
 
 if __name__ == '__main__':
@@ -76,8 +95,10 @@ if __name__ == '__main__':
 
     #cell_type_bame: str = 'Afferent / Efferent Arteriole Endothelial'
     cell_type_name: str = 'Cortical Collecting Duct Intercalated Type A'
-    annotation_details =\
-        manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(cell_type_name)
-    print(f'annotation_details: {annotation_details}')
+    # annotation_details =\
+    #     manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(cell_type_name)
+    # print(f'annotation_details: {annotation_details}')
+
+    manager.check_annotation_details()
 
     manager.close()
