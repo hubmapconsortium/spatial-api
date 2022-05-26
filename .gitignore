@@ -4,3 +4,4 @@ venv/
 **/__pycache__/
 server/log
 server/resources/app.properties
+scripts/psc/*.json

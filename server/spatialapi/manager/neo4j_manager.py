@@ -23,7 +23,8 @@ class Neo4jManager(object):
     # https://neo4j.com/docs/api/python-driver/current/api.html
     def close(self) -> None:
         logger.info(f'Neo4jManager: Closing connection to Neo4J')
-        self.driver.close()
+        if self.driver is not None:
+            self.driver.close()
 
     def search_organ_donor_data_for_grouping_concept_preferred_term(self,
                                                                     organ_donor_data_list: List[dict],
@@ -107,6 +108,27 @@ class Neo4jManager(object):
             " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
             " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)
+
+    def query_cell_types(self) -> List[dict]:
+        recs: List[dict] = []
+        cypher: str = \
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            " WHERE NOT s.rui_location IS NULL AND NOT trim(s.rui_location) = '' AND (o.organ = 'LK' or o.organ = 'RK')" \
+            " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
+            " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq' OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x' OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
+            " RETURN DISTINCT s.uuid AS sample_uuid, ds.uuid AS ds_uuid, dn.uuid, dn.metadata, s.rui_location"
+        with self.driver.session() as session:
+            results: neo4j.Result = session.run(cypher)
+            for record in results:
+                if record.get('ds_uuid') is not None:
+                    processed_rec: dict = {
+                        # Key into the column sample.sample_uuid
+                        'sample_uuid': record.get('sample_uuid'),
+                        # Used to get the psc path from the ingest api
+                        'ds_uuid': record.get('ds_uuid')
+                    }
+                    recs.append(processed_rec)
+        return recs
 
     def query_right_kidney(self) -> List[dict]:
         return self.query_organ('RK')
