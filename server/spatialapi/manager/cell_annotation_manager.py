@@ -83,13 +83,13 @@ if __name__ == '__main__':
         description='Tissue Sample Cell Type Manager',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-l", '--load', action="store_true",
-                        help='load cell_annotation_details and related tables from Neo4j')
+                        help='load cell_annotation_details from scraping web page')
     parser.add_argument("-c", '--check', action="store_true",
-                        help='check cell_annotation_details and related tables with Neo4j')
+                        help='check cell_annotation_details and related tables by scraping web page')
     parser.add_argument("-d", "--detail_cell_type_name", type=str,
-                        help='dump anotation detail of cell_type_name')
+                        help='dump cell_anotation_details of cell_type_name')
     parser.add_argument("-m", "--get_cell_marker_id", type=str,
-                        help='get cell_marker id')
+                        help='get cell_marker id from marker_name')
 
     args = parser.parse_args()
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         elif args.detail_cell_type_name is not None:
             annotation_details = \
                 manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(args.detail_cell_type_name)
-            print(f'annotation_details: {annotation_details}')
+            print(f'annotation_details (cell_type_name, obo_ontoloty_id_uri, ontology_id, markers): {annotation_details}')
         elif args.get_cell_marker_id is not None:
             id: int = manager.postgresql_manager.get_cell_marker_id(args.get_cell_marker_id)
             logger.info(f"cell_marker.marker:{args.get_cell_marker_id} id: {id}")
