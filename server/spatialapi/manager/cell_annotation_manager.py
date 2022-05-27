@@ -70,35 +70,61 @@ class CellAnnotationManager(object):
 
 
 if __name__ == '__main__':
+    import argparse
+
+    class RawTextArgumentDefaultsHelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawTextHelpFormatter
+    ):
+        pass
+
+    # https://docs.python.org/3/howto/argparse.html
+    parser = argparse.ArgumentParser(
+        description='Tissue Sample Cell Type Manager',
+        formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-l", '--load', action="store_true",
+                        help='load cell_annotation_details and related tables from Neo4j')
+    parser.add_argument("-c", '--check', action="store_true",
+                        help='check cell_annotation_details and related tables with Neo4j')
+    parser.add_argument("-d", "--detail_cell_type_name", type=str,
+                        help='dump anotation detail of cell_type_name')
+    parser.add_argument("-m", "--get_cell_marker_id", type=str,
+                        help='get cell_marker id')
+
+    args = parser.parse_args()
+
     config = configparser.ConfigParser()
     config.read('resources/app.local.properties')
     manager = CellAnnotationManager(config)
 
-    # id: int = manager.postgresql_manager.get_cell_marker_id('PAX8')
-    # logger.info(f"First insert: {id}")
-    # id: int = manager.postgresql_manager.get_cell_marker_id('PKHD1')
-    # logger.info(f"Second insert: {id}")
+    print(f'detail_cell_type_name: {args.detail_cell_type_name}')
 
-    # ids: List[int] = manager.postgresql_manager.create_call_markers(
-    #     ['VEGFC','ADGRL4','CCDC3','CD34','ADAMTS6','PALMD','CDH13','GFOD1','CHRM3','TEK']
-    # )
-    # logger.info(f"Cell Marker IDs: {ids}")
+    try:
 
-    # id: int = manager.postgresql_manager.create_annotation_details(
-    #     'Afferent / Efferent Arteriole Endothelial',
-    #     'http://www.ontobee.org/ontology/CL?iri=http://purl.obolibrary.org/obo/CL_1001096',
-    #     ['VEGFC', 'ADGRL4', 'CCDC3', 'CD34', 'ADAMTS6', 'PALMD', 'CDH13', 'GFOD1', 'CHRM3', 'TEK']
-    # )
-    # logger.info(f"cell_annotation_details: {id}")
+        # ids: List[int] = manager.postgresql_manager.create_cell_markers(
+        #     ['VEGFC','ADGRL4','CCDC3','CD34','ADAMTS6','PALMD','CDH13','GFOD1','CHRM3','TEK']
+        # )
+        # logger.info(f"Cell Marker IDs: {ids}")
 
-    #manager.load_annotation_details()
+        # id: int = manager.postgresql_manager.create_annotation_details(
+        #     'Afferent / Efferent Arteriole Endothelial',
+        #     'http://www.ontobee.org/ontology/CL?iri=http://purl.obolibrary.org/obo/CL_1001096',
+        #     ['VEGFC', 'ADGRL4', 'CCDC3', 'CD34', 'ADAMTS6', 'PALMD', 'CDH13', 'GFOD1', 'CHRM3', 'TEK']
+        # )
+        # logger.info(f"cell_annotation_details: {id}")
 
-    #cell_type_bame: str = 'Afferent / Efferent Arteriole Endothelial'
-    cell_type_name: str = 'Cortical Collecting Duct Intercalated Type A'
-    # annotation_details =\
-    #     manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(cell_type_name)
-    # print(f'annotation_details: {annotation_details}')
+        if args.load:
+            manager.load_annotation_details()
+        elif args.check:
+            manager.check_annotation_details()
+        elif args.detail_cell_type_name is not None:
+            annotation_details = \
+                manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(args.detail_cell_type_name)
+            print(f'annotation_details: {annotation_details}')
+        elif args.get_cell_marker_id is not None:
+            id: int = manager.postgresql_manager.get_cell_marker_id(args.get_cell_marker_id)
+            logger.info(f"cell_marker.marker:{args.get_cell_marker_id} id: {id}")
 
-    manager.check_annotation_details()
-
-    manager.close()
+    finally:
+        manager.close()
+        logger.info('Done!')
