@@ -96,5 +96,5 @@ class Ssh:
     def scp_put_dir(self, src: str, dest: str) -> None:
         self.scp_client.put(src, recursive=True, remote_path=dest)
 
-    def scp_get(self, src):
-        self.scp_client.get(src)
+    def scp_get(self, src: str, dest: str) -> None:
+        self.scp_client.get(src, dest)

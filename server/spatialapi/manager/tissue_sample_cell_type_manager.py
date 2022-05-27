@@ -75,36 +75,92 @@ class TissueSampleCellTypeManager(object):
         with open(json_file, 'w') as f:
             json.dump(cell_types_data, f)
 
+    def build_cell_types_table(self, json_from_psc_file: str) -> List[str]:
+        ds_uuid_missing_cell_type_counts: List[str] = []
+        input_file = open(json_from_psc_file)
+        data_list: List[dict] = json.load(input_file)
+        for data in data_list:
+            if 'cell_type_counts' in data:
+                sample_uuid: str = data['sample_uuid']
+                cell_type_counts: dict = data['cell_type_counts']
+                for cell_type_name, cell_type_count_str in cell_type_counts.items():
+                    cell_type_count = int(cell_type_count_str)
+                    self.postgresql_manager.insert_cell_types_row(sample_uuid, cell_type_name, cell_type_count)
+            else:
+                ds_uuid_missing_cell_type_counts.append(data['ds_uuid'])
+        return ds_uuid_missing_cell_type_counts
 
 if __name__ == '__main__':
+    import argparse
+
+    class RawTextArgumentDefaultsHelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawTextHelpFormatter
+    ):
+        pass
+
+    # https://docs.python.org/3/howto/argparse.html
+    parser = argparse.ArgumentParser(
+        description='Tissue Sample Cell Type Manager',
+        formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-b", '--build_json', action="store_true",
+                        help='build the .json file that is processed at the psc')
+    parser.add_argument("-p", '--process_json', action="store_true",
+                        help='process the .json file created at the psc')
+    parser.add_argument("-r", "--run_psc", action="store_true",
+                        help='run code on the psc')
+
+    args = parser.parse_args()
+
     config = configparser.ConfigParser()
     config.read('resources/app.local.properties')
     manager = TissueSampleCellTypeManager(config)
 
+    psc_working_dir: str = '~/bin/psc'
+    local_working_dir: str = '../scripts/psc'
+
     try:
-        token = 'Agm9bW6Brq7gGlX6gz2omp7WzdaxzzEn9yz8n3Vw9qXW1nznndF8CwGaBNqEBlyBawx957nEa5oYB7U6382eatm2aQ'
-        manager.dump_cell_types_data(token, '../scripts/psc/data.json')
+        if args.build_json:
+            logger.info(f'** Building data.json and sending it to {psc_working_dir}...')
 
-        ssh = Ssh(config)
+            token = 'Agm9bW6Brq7gGlX6gz2omp7WzdaxzzEn9yz8n3Vw9qXW1nznndF8CwGaBNqEBlyBawx957nEa5oYB7U6382eatm2aQ'
+            manager.dump_cell_types_data(token, '../scripts/psc/data.json')
 
-        working_dir: str = '~/bin/psc'
+            ssh = Ssh(config)
 
-        ssh.scp_put('../scripts/psc/test.py', working_dir)
-        ssh.scp_put('../scripts/psc/data.json', working_dir)
+            ssh.send_shell(f'mkdir -f {psc_working_dir}')
+            ssh.scp_put('../scripts/psc/mkenv.sh', psc_working_dir)
+            ssh.scp_put('../scripts/psc/requirements.txt', psc_working_dir)
+            ssh.scp_put('../scripts/psc/test.py', psc_working_dir)
+            ssh.scp_put('../scripts/psc/data.json', psc_working_dir)
 
-        # ssh.send_shell('cd ~/bin')
-        # ssh.send_shell('rm -rf ./psc')
-        # ssh.scp_put_dir('../scripts/psc', '~/bin')
-        # ssh.send_shell('cd ./psc')
-        # ssh.send_shell('./mkvenv.sh') # THIS TAKES FOREVER ON THE PSC MACHINES
+        elif args.run_psc:
+            logger.info(f'** Building data.json on psc server...')
 
-        ssh.open_shell()
-        ssh.send_shell(f'cd {working_dir}')
-        ssh.send_shell('source ./venv/bin/activate')
-        ssh.send_shell('./test.py')
+            # ssh.send_shell('cd ~/bin')
+            # ssh.send_shell('rm -rf ./psc')
+            # ssh.scp_put_dir('../scripts/psc', '~/bin')
+            # ssh.send_shell('cd ./psc')
+            # ssh.send_shell('./mkvenv.sh') # THIS TAKES FOREVER ON THE PSC MACHINES
 
-        time.sleep(10)
-        logger.info(f'last line of received data: {ssh.get_strdata()}')
-        logger.info(f'complete data received: {ssh.get_fulldata()}')
+            ssh = Ssh(config)
+
+            ssh.open_shell()
+            ssh.send_shell(f'cd {psc_working_dir}')
+            ssh.send_shell('source ./venv/bin/activate')
+            ssh.send_shell('./test.py')
+
+            time.sleep(10)
+            logger.info(f'last line of received data: {ssh.get_strdata()}')
+            logger.info(f'complete data received: {ssh.get_fulldata()}')
+
+        elif args.process_json:
+            logger.info(f'** Building cell_types table and retrieving it to {local_working_dir}...')
+
+            ssh = Ssh(config)
+            ssh.scp_get(f'{psc_working_dir}/data_out.json', local_working_dir)
+
+            manager.build_cell_types_table('../scripts/psc/data_out.json')
     finally:
         manager.close()
+        logger.info('Done!')

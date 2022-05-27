@@ -1,9 +1,7 @@
 import psycopg2
 from typing import List
 import logging
-from flask import abort
-from spatialapi.utils import json_error
-from http import HTTPStatus
+
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -45,7 +43,7 @@ class PostgresqlManager(object):
             # get the generated id back
             id = cursor.fetchone()[0]
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -59,7 +57,7 @@ class PostgresqlManager(object):
             results = cursor.fetchone()
             logger.info(f'get_cell_marker_id({marker}); results: {results}')
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -73,7 +71,7 @@ class PostgresqlManager(object):
             results = cursor.fetchone()
             logger.info(f'create_cell_markers({markers}); results: {results}')
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -95,7 +93,7 @@ class PostgresqlManager(object):
             self.conn.commit()
             results = cursor.fetchone()
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
             #abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', HTTPStatus.CONFLICT))
             raise e
         finally:
@@ -117,12 +115,35 @@ class PostgresqlManager(object):
             data = cursor.fetchall()
             logger.info(f'Returned {len(data)} rows')
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
         return data[0]
 
+    def insert_cell_types_row(self, sample_uuid: str, cell_type_name: str, cell_type_count: int):
+        sql: str =\
+            "INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count) VALUES (" \
+            f" '{sample_uuid}'," \
+            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{cell_type_name}')," \
+            f" '{cell_type_count}'" \
+            ")"
+        try:
+            cursor = self.conn.cursor()
+            logger.info(f'sql: {sql}')
+            cursor.execute(sql)
+            self.conn.commit()
+            import pdb; pdb.set_trace()
+            logger.info(f'Returned {len(data)} rows')
+        except (psycopg2.errors.NotNullViolation) as e:
+            logger.error(f'Table cell_annotation_details is missing a cell_type_name? Exception Type: {e.__class__.__name__}: {e}')
+            import pdb; pdb.set_trace()
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+            import pdb; pdb.set_trace()
+        finally:
+            if cursor is not None:
+                cursor.close()
 
     def select(self, sql: str) -> List[int]:
         data: List[int] = None
@@ -132,7 +153,7 @@ class PostgresqlManager(object):
             data = [row[0] for row in cursor.fetchall()]
             logger.info(f'Returned {len(data)} rows')
         except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(e)
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
