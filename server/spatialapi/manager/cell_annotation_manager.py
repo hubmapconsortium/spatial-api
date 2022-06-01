@@ -4,6 +4,8 @@ import configparser
 import requests
 from bs4 import BeautifulSoup
 import re
+from urllib import parse
+import psycopg2
 from typing import List
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
@@ -16,7 +18,8 @@ class CellAnnotationManager(object):
 
     def __init__(self, config):
         cell_annotation_config = config['cellAnnotation']
-        self.azmuth_uri: str = cell_annotation_config.get('Azmuth')
+        self.azimuth_uri: str = cell_annotation_config.get('Azimuth')
+        logger.info(f"CellAnnotationManager Azimuth: {parse.quote(self.azimuth_uri)}")
 
         self.postgresql_manager = PostgresqlManager(config)
 
@@ -25,8 +28,8 @@ class CellAnnotationManager(object):
         logger.info(f'CellAnnotationManager: Closing connection to PostgreSQL')
         self.postgresql_manager.close()
 
-    def find_rows_in_azmuth_uri_table(self, table_re: re):
-        html_text: str = requests.get(self.azmuth_uri).text
+    def find_rows_in_azimuth_uri_table(self, summary_re: re, first_label_entry: str):
+        html_text: str = requests.get(self.azimuth_uri).text
         bs_object = BeautifulSoup(html_text, 'html.parser')
         details =  bs_object \
             .find("body") \
@@ -36,24 +39,41 @@ class CellAnnotationManager(object):
             .find("div", attrs={"class": "section"}) \
             .find_all("details")
         for detail in details:
-            if detail.find("summary", string=re.compile(table_re)) is not None:
+            summary: str = detail.find("summary", string=re.compile(summary_re))
+            if summary is not None:
+                logger.info(f"find_rows_in_azimuth_uri_table summary: {summary}")
                 # Skip the header row...
-                return detail.find("table").find_all("tr")[1:]
+                rows: List[str] = detail.find("table").find_all("tr")[1:]
+                if rows[0].select('td:nth-of-type(1)')[0].string.strip() == first_label_entry:
+                    return rows
 
-    def load_annotation_details(self):
-        rows = self.find_rows_in_azmuth_uri_table(r'^.*annotation\.l3.*$')
+    def load_annotation_details_from_azimuth_uri_table(self, url_table_summary: re, first_label_entry: str):
+        rows = self.find_rows_in_azimuth_uri_table(url_table_summary, first_label_entry)
+        #import pdb; pdb.set_trace()
         for row in rows:
             cell_type_name: str = row.select('td:nth-of-type(1)')[0].string.strip()
-            obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
+            try:
+                obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
+            except AttributeError as e:
+                obo_ontology_id_uri: str = 'None'
             markers: List[str] = row.select('td:nth-of-type(3)')[0].string.strip().split(',')
             markers_stripped: List[str] = [s.strip() for s in markers]
-            id: int = manager.postgresql_manager.create_annotation_details(
-                cell_type_name, obo_ontology_id_uri, markers_stripped
-            )
-            logger.info(f"cell_annotation_details: {id}")
+            try:
+                id: int = manager.postgresql_manager.create_annotation_details(
+                    cell_type_name, obo_ontology_id_uri, markers_stripped
+                )
+                logger.info(f"cell_annotation_details: {id}")
+            except psycopg2.errors.UniqueViolation as e:
+                logger.info(f"create_annotation_details {e}")
 
-    def check_annotation_details(self):
-        rows = self.find_rows_in_azmuth_uri_table(r'^.*annotation\.l3.*$')
+
+    def load_annotation_details(self):
+        #self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l3.*$', 'Afferent / Efferent Arteriole Endothelial')
+        self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l2.*$', 'Afferent / Efferent Arteriole Endothelial')
+        self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l1.*$', 'Ascending Thin Limb')
+
+    def check_annotation_details_from_azimuth_uri_table(self, url_table_summary: re):
+        rows = self.find_rows_in_azimuth_uri_table(url_table_summary)
         for row in rows:
             cell_type_name: str = row.select('td:nth-of-type(1)')[0].string.strip()
             obo_ontology_id_uri: str = row.select('td:nth-of-type(2)')[0].find('a').get("href")
@@ -67,6 +87,11 @@ class CellAnnotationManager(object):
             if  sorted(markers_stripped) != sorted(data[2]):
                 logger.error(f"The markers do not match web: {markers_stripped}, db: {data[2]}")
         logger.info(f'Done! check_annotation_details {len(rows)} processed')
+
+    def check_annotation_details(self):
+        self.check_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l3.*$')
+        self.check_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l2.*$')
+        self.check_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l1.*$')
 
 
 if __name__ == '__main__':
@@ -83,9 +108,9 @@ if __name__ == '__main__':
         description='Tissue Sample Cell Type Manager',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-l", '--load', action="store_true",
-                        help='load cell_annotation_details from scraping web page')
+                        help='load cell_annotation_details from scraping Azimuth data from web page')
     parser.add_argument("-c", '--check', action="store_true",
-                        help='check cell_annotation_details and related tables by scraping web page')
+                        help='check cell_annotation_details and related tables by scraping Azimuth data from web page')
     parser.add_argument("-d", "--detail_cell_type_name", type=str,
                         help='dump cell_anotation_details of cell_type_name')
     parser.add_argument("-m", "--get_cell_marker_id", type=str,
@@ -96,8 +121,6 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('resources/app.local.properties')
     manager = CellAnnotationManager(config)
-
-    print(f'detail_cell_type_name: {args.detail_cell_type_name}')
 
     try:
 
@@ -118,12 +141,15 @@ if __name__ == '__main__':
         elif args.check:
             manager.check_annotation_details()
         elif args.detail_cell_type_name is not None:
+            print(f'detail_cell_type_name: {args.detail_cell_type_name}')
             annotation_details = \
                 manager.postgresql_manager.dump_anotation_detail_of_cell_type_name(args.detail_cell_type_name)
             print(f'annotation_details (cell_type_name, obo_ontoloty_id_uri, ontology_id, markers): {annotation_details}')
         elif args.get_cell_marker_id is not None:
             id: int = manager.postgresql_manager.get_cell_marker_id(args.get_cell_marker_id)
             logger.info(f"cell_marker.marker:{args.get_cell_marker_id} id: {id}")
+
+    # cell_type, html tables, data set type
 
     finally:
         manager.close()

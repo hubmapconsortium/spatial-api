@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "public".cell_annotation_details_marker (
 DROP TABLE IF EXISTS "public"."cell_types";
 CREATE TABLE IF NOT EXISTS "public"."cell_types" (
     "id" SERIAL PRIMARY KEY,
-    "sample_uuid" text NOT NULL UNIQUE,
+    "sample_uuid" text NOT NULL,
     "cell_annotation_details_id" SERIAL REFERENCES cell_annotation_details (id) ON DELETE CASCADE,
     "cell_type_count" BIGINT NOT NULL,
     CONSTRAINT cell_types_sample_uuid_cell_annotation_details_id_key UNIQUE (sample_uuid, cell_annotation_details_id)

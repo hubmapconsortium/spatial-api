@@ -26,6 +26,8 @@ class PostgresqlManager(object):
         logger.info(f"PostgresqlManager: Username: {postgresql_config.get('Username')} Server: {postgresql_config.get('Server')}")
         self.conn = psycopg2.connect(**connection)
 
+        self.missing_cell_type_names: List[str] = []
+
     def close(self) -> None:
         logger.info(f'PostgresqlManager: Closing connection to PostgreSQL')
         if self.conn is not None:
@@ -42,8 +44,9 @@ class PostgresqlManager(object):
             self.conn.commit()
             # get the generated id back
             id = cursor.fetchone()[0]
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -56,8 +59,9 @@ class PostgresqlManager(object):
             self.conn.commit()
             results = cursor.fetchone()
             logger.info(f'get_cell_marker_id({marker}); results: {results}')
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -70,8 +74,9 @@ class PostgresqlManager(object):
             self.conn.commit()
             results = cursor.fetchone()
             logger.info(f'create_cell_markers({markers}); results: {results}')
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -92,8 +97,9 @@ class PostgresqlManager(object):
                            (cell_type_name, obo_ontology_id_uri, ontology_id, markers, 0))
             self.conn.commit()
             results = cursor.fetchone()
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
             #abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', HTTPStatus.CONFLICT))
             raise e
         finally:
@@ -114,18 +120,25 @@ class PostgresqlManager(object):
             cursor.execute(sql)
             data = cursor.fetchall()
             logger.info(f'Returned {len(data)} rows')
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
         return data[0]
 
+    # It seems that the data from the PSC files contains "Cell" while the web page data does not...
+    def remove_cell_from_cell_type_name(self, cell_type_name: str) -> str:
+        import re
+        tmp: str = re.sub('[Cc]ell', ' ', cell_type_name)
+        return " ".join(tmp.split())
+
     def insert_cell_types_row(self, sample_uuid: str, cell_type_name: str, cell_type_count: int):
         sql: str =\
             "INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count) VALUES (" \
             f" '{sample_uuid}'," \
-            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{cell_type_name}')," \
+            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{self.remove_cell_from_cell_type_name(cell_type_name)}')," \
             f" '{cell_type_count}'" \
             ")"
         try:
@@ -133,17 +146,21 @@ class PostgresqlManager(object):
             logger.info(f'sql: {sql}')
             cursor.execute(sql)
             self.conn.commit()
-            import pdb; pdb.set_trace()
-            logger.info(f'Returned {len(data)} rows')
+            #import pdb; pdb.set_trace()
         except (psycopg2.errors.NotNullViolation) as e:
-            logger.error(f'Table cell_annotation_details is missing a cell_type_name? Exception Type: {e.__class__.__name__}: {e}')
-            import pdb; pdb.set_trace()
-        except (Exception, psycopg2.DatabaseError) as e:
-            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
-            import pdb; pdb.set_trace()
+            self.conn.rollback()
+            logger.error(f'Table cell_annotation_details is missing a cell_type_name! Exception Type: {e.__class__.__name__}: {e}')
+            if cell_type_name not in self.missing_cell_type_names:
+                self.missing_cell_type_names.append(cell_type_name)
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
+
+    def get_missing_cell_type_names(self) -> List[str]:
+        return self.missing_cell_type_names
 
     def select(self, sql: str) -> List[int]:
         data: List[int] = None

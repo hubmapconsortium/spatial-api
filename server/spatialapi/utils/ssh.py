@@ -31,7 +31,7 @@ class Ssh:
         try:
             self.client.connect(self.psc_gateway_host, username=self.psc_username, password=self.psc_password, look_for_keys=False)
         except Exception as ex:
-            logger.error(f'Ssh failed: {ex}')
+            logger.error(f'Ssh connection failed: {ex}')
             return
         self.transport = paramiko.Transport((self.psc_gateway_host, 22))
         self.transport.connect(username=self.psc_username, password=self.psc_password)

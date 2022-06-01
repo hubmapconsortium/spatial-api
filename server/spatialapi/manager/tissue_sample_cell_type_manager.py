@@ -6,6 +6,7 @@ import configparser
 import requests
 import time
 import json
+from urllib import parse
 from typing import List
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
@@ -24,12 +25,13 @@ logger = logging.getLogger(__name__)
 class TissueSampleCellTypeManager(object):
 
     def __init__(self, config):
+        tissue_sample_cell_type_config = config['tissueSampleCellType']
+        self.ingest_api_url: str = tissue_sample_cell_type_config.get('IngestApiUrl').rstrip('/')
+        logger.info(f"TissueSampleCellTypeManager IngestApiUrl: '{parse.quote(self.ingest_api_url)}'")
+
         self.neo4j_manager = Neo4jManager(config)
         self.postgresql_manager = PostgresqlManager(config)
         self.ssh = Ssh(config)
-
-        tissue_sample_cell_type_config = config['tissueSampleCellType']
-        self.ingest_api_url: str = tissue_sample_cell_type_config.get('IngestApiUrl').rstrip('/')
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
     def close(self) -> None:
@@ -89,6 +91,10 @@ class TissueSampleCellTypeManager(object):
             else:
                 ds_uuid_missing_cell_type_counts.append(data['ds_uuid'])
         return ds_uuid_missing_cell_type_counts
+
+    def get_missing_cell_type_names(self) -> List[str]:
+        return self.postgresql_manager.get_missing_cell_type_names()
+
 
 if __name__ == '__main__':
     import argparse
@@ -161,6 +167,7 @@ if __name__ == '__main__':
             ssh.scp_get(f'{psc_working_dir}/data_out.json', local_working_dir)
 
             manager.build_cell_types_table('../scripts/psc/data_out.json')
+            logger.info(f"Missing cell_type_names: {', '.join(manager.get_missing_cell_type_names())}")
     finally:
         manager.close()
         logger.info('Done!')
