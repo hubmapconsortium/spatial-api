@@ -152,30 +152,28 @@ class PostgresqlManager(object):
             return type_name_map[cell_type_name]
         return self.remove_cell_from_cell_type_name(cell_type_name)
 
-    def insert_cell_types_row(self, sample_uuid: str, cell_type_name: str, cell_type_count: int):
-        sql: str =\
-            "INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count) VALUES (" \
-            f" '{sample_uuid}'," \
-            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{self.cell_type_name_exception_mapping(cell_type_name)}')," \
-            f" '{cell_type_count}'" \
-            ")"
+    def add_cell_type_count(self,
+                            sample_uuid: str,
+                            cell_type_name: str,
+                            cell_type_count: int):
         try:
             cursor = self.conn.cursor()
-            logger.info(f'sql: {sql}')
-            cursor.execute(sql)
+            cursor.execute('CALL add_cell_type_count_sp(%s, %s, %s)',
+                           (sample_uuid, self.cell_type_name_exception_mapping(cell_type_name), cell_type_count))
             self.conn.commit()
-            #import pdb; pdb.set_trace()
         except (psycopg2.errors.NotNullViolation) as e:
             self.conn.rollback()
-            logger.error(f'Table cell_annotation_details is missing a cell_type_name! Exception Type: {e.__class__.__name__}: {e}')
+            logger.error(f'Table cell_annotation_details is missing a cell_type_name="{cell_type_name}"! Exception Type: {e.__class__.__name__}: {e}')
             if cell_type_name not in self.missing_cell_type_names:
                 self.missing_cell_type_names.append(cell_type_name)
-        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+        except (Exception, psycopg2.DatabaseError) as e:
             self.conn.rollback()
             logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
+            raise e
         finally:
             if cursor is not None:
                 cursor.close()
+
 
     def get_missing_cell_type_names(self) -> List[str]:
         return self.missing_cell_type_names

@@ -119,6 +119,21 @@ BEGIN
 END
 $$;
 
+CREATE OR REPLACE PROCEDURE add_cell_type_count_sp (
+    P_sample_uuid IN VARCHAR,
+    P_cell_type_name IN VARCHAR,
+    P_cell_type_count IN INT
+    )
+LANGUAGE plpgsql AS
+$$
+BEGIN
+    INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count)
+     VALUES (P_sample_uuid, (SELECT id from public.cell_annotation_details WHERE cell_type_name = P_cell_type_name), P_cell_type_count)
+     ON CONFLICT ON CONSTRAINT cell_types_sample_uuid_cell_annotation_details_id_key DO UPDATE
+     SET cell_type_count = EXCLUDED.cell_type_count + P_cell_type_count;
+END
+$$;
+
 --
 -- TEST DATA
 

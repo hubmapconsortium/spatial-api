@@ -87,7 +87,7 @@ class TissueSampleCellTypeManager(object):
                 cell_type_counts: dict = data['cell_type_counts']
                 for cell_type_name, cell_type_count_str in cell_type_counts.items():
                     cell_type_count = int(cell_type_count_str)
-                    self.postgresql_manager.insert_cell_types_row(sample_uuid, cell_type_name, cell_type_count)
+                    self.postgresql_manager.add_cell_type_count(sample_uuid, cell_type_name, cell_type_count)
             else:
                 ds_uuid_missing_cell_type_counts.append(data['ds_uuid'])
         return ds_uuid_missing_cell_type_counts
