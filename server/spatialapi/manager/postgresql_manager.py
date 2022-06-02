@@ -134,11 +134,29 @@ class PostgresqlManager(object):
         tmp: str = re.sub('[Cc]ell', ' ', cell_type_name)
         return " ".join(tmp.split())
 
+    def cell_type_name_exception_mapping(self, cell_type_name: str) -> str:
+        type_name_map: dict = {
+            'Peritubular Capillary Endothelial Cell': 'Peritubular Capilary Endothelial',
+            'Afferent Arteriole Endothelial Cell': 'Afferent / Efferent Arteriole Endothelial',
+            'Vascular Smooth Muscle Cell/Pericyte (general)': 'Vascular Smooth Muscle / Pericyte',
+            'M2-Macrophage': 'M2 Macrophage',
+            'non Classical Monocyte': 'Non-classical monocyte',
+            'Connecting Tubule Principal Cell': 'Connecting Tubule',
+            'Dendritic Cell (classical)': 'Classical Dendritic',
+            'Distal Convoluted Tubule Cell Type 1': 'Distal Convoluted Tubule',
+            'Connecting Tubule Intercalated Cell Type A': 'Connecting Tubule',
+            'Juxtaglomerular granular cell (Renin positive)': 'Renin-positive Juxtaglomerular Granular',
+            'Dendritic Cell (plasmatoid)': 'Plasmacytoid Dendritic',
+        }
+        if cell_type_name in type_name_map:
+            return type_name_map[cell_type_name]
+        return self.remove_cell_from_cell_type_name(cell_type_name)
+
     def insert_cell_types_row(self, sample_uuid: str, cell_type_name: str, cell_type_count: int):
         sql: str =\
             "INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count) VALUES (" \
             f" '{sample_uuid}'," \
-            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{self.remove_cell_from_cell_type_name(cell_type_name)}')," \
+            f" (SELECT id from public.cell_annotation_details WHERE cell_type_name='{self.cell_type_name_exception_mapping(cell_type_name)}')," \
             f" '{cell_type_count}'" \
             ")"
         try:
