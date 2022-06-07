@@ -1,0 +1,141 @@
+openapi: 3.0.0
+info:
+  description: 'The HuBMAP Spatial API is a standard RESTful web service with create operations.<br><br>'
+  version: 1.0.0
+  title: HuBMAP Spatial API
+  contact:
+    name: HuBMAP Help Desk
+    email: api-developers@hubmapconsortium.org
+  license:
+    name: MIT License
+    url: 'https://github.com/hubmapconsortium/antibody-api/blob/master/license.txt'
+servers:
+  - url: 'https://spatial.api.hubmapconsortium.org'
+security:
+  - bearerAuth: []
+paths:
+  '/search/hubmap_id/{hubmap_id}/radius/{radius}/target/{target}':
+    get:
+      summary: List the HubMAP IDs associated with the target that are located within the radius
+      operationId: search_hubmap_id_to_radius
+      parameters:
+        - name: hubmap_id
+          in: path
+          required: true
+          description: The initial starting point for the search
+          schema:
+            type: string
+            example: HBM634.MMGK.572
+        - name: radius
+          in: path
+          required: true
+          description: The radius in mm to search from the initial starting point
+          schema:
+            type: number
+            example: 150.5
+        - name: target
+          in: path
+          required: true
+          description: The target human, currently either VHMale, or VFemale
+          schema:
+            type: string
+            example: VHMale
+      responses:
+        '200':
+          description: List of HubMAP IDs that meet the radius and target search from the center of the geometry of the HubMAP IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubMAPIds'
+        '400':
+          description: Parameter is incorrect or incorrectly formed
+        '404':
+          description: No HubMAP IDs were found
+  '/spatial-search/hubmap_id':
+    post:
+      summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
+      parameters:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpatialSearchRequest'
+      responses:
+        '200':
+          description: List of HubMAP IDs that meet the radius and target given
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubMAPIds'
+        '400':
+          description: Parameter is incorrect or incorrectly formed
+        '404':
+          description: No HubMAP IDs were found
+  '/spatial-search/point':
+    post:
+      summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
+      parameters:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpatialSearchPointRequest'
+      responses:
+        '200':
+          description: List of HubMAP IDs that meet the radius and target given
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HubMAPIds'
+        '400':
+          description: Parameter is incorrect or incorrectly formed
+        '404':
+          description: No HubMAP IDs were found
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    HubMAPIds:
+      type: object
+      properties:
+        hubmap_ids:
+          type: array
+          description: "List of HubMAP IDs."
+          items:
+            type: string
+          example: ["HBM457.NNQN.252", "HBM627.QCRL.874"]
+    SpatialSearchRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          example: VHMale
+        radius:
+          type: number
+          example: 120.4
+        hubmap_id:
+          type: string
+          example: HBM457.NNQN.252
+        cell_type:
+          type: string
+          example: Connecting Tubule
+    SpatialSearchPointRequest:
+      type: object
+      properties:
+        target:
+          type: string
+          example: VHMale
+        radius:
+          type: number
+          example: 120.4
+        x:
+          type: number
+          example: 10
+        y:
+          type: number
+          example: 20
+        z:
+          type: number
+          example: 20

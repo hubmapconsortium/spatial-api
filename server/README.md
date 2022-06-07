@@ -1,43 +1,28 @@
 # Spatial API
 
-## Build Env
-
-````bash
-python3 -m pip install --upgrade pip
-python3 -m venv venv
-source venv/bin/activate
-pip install -r server/requirements.txt
-````
-
 ## Server
+To rebuld the server in a Docker container.
 
 ```bash
-docker stop $(docker ps -q --filter ancestor=spatial-api_spatial-api )
-docker rmi spatial-api_spatial-api
-scripts/run_local.sh
+scripts/run_local.sh -s
 ```
 
-## Data
+## Database
+To rebuld the database in a Docker container.
+
+On startup it will process the file `db/initdb.d/initdb.sql` which
+will define tables and stored procedures.
+
+```bash
+scripts/run_local.sh -d
+```
 
 ###Build
-Build json, copy it to the PSC and build.
+To build the json, copy it to the PSC and build.
 ```bash
 cd server
 export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py --build_json
 export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py --run_psc
-```
-
-### Load
-First, remove the database container and rebuild it. On startup it will process the file `db/initdb.d/initdb.sql` which
-will define tables and stored procedures. Then, load the tables with the following.
-```bash
-docker stop $(docker ps -q --filter ancestor=spatial-api_db )
-docker rmi spatial-api_db
-scripts/run_local.sh
-cd server
-pip install -r ../requirements.txt
-export PYTHONPATH=.; python3 ./spatialapi/manager/cell_annotation_manager.py --load
-export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py --process_json
 ```
 
 ## Testing
