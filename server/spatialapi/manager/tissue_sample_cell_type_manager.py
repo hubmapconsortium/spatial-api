@@ -9,9 +9,6 @@ import json
 from urllib import parse
 from typing import List
 
-logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 1) use the query to get the cell_types data

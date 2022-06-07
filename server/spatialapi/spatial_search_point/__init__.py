@@ -5,9 +5,6 @@ from spatialapi.utils import json_error
 from http import HTTPStatus
 import logging
 
-logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S',
-                    level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 spatial_search_point_blueprint = Blueprint('spatial_search_point_blueprint', __name__)
@@ -35,12 +32,12 @@ def spatial_search_point():
     return response
 
 def request_validation(request_dict: dict) -> None:
-    numeric_instances_keys: tuple = ("radius", 'x', 'y', 'z')
-    required_request_keys: tuple = numeric_instances_keys + ("target",)
+    numeric_instances_keys: tuple = ('radius', 'x', 'y', 'z')
+    required_request_keys: tuple = numeric_instances_keys + ('target',)
     target_values: list = ['VHMale', 'VHFemale']
     if not all(key in request_dict for key in required_request_keys):
-        abort(json_error(f'Request Body: must have the following required attributes {required_request_keys}', HTTPStatus.BAD_REQUEST))
+        abort(json_error(f"Request Body: must have the following required attributes {required_request_keys}", HTTPStatus.BAD_REQUEST))
     if not all(isinstance(value, (int, float)) for value in [request_dict[k] for k in numeric_instances_keys]):
-        abort(json_error(f'Request Body: these attributes must have numeric values (int or float): {numeric_instances_keys}', HTTPStatus.BAD_REQUEST))
+        abort(json_error(f"Request Body: these attributes must have numeric values (int or float): {numeric_instances_keys}", HTTPStatus.BAD_REQUEST))
     if not request_dict['target'] in target_values:
-        abort(json_error(f'Request Body: the attribute "target" must be one of: {", ".join(target_values)}', HTTPStatus.BAD_REQUEST))
+        abort(json_error(f"Request Body: the attribute 'target' must be one of: {', '.join(target_values)}", HTTPStatus.BAD_REQUEST))

@@ -9,6 +9,14 @@ source venv/bin/activate
 pip install -r server/requirements.txt
 ````
 
+## Server
+
+```bash
+docker stop $(docker ps -q --filter ancestor=spatial-api_spatial-api )
+docker rmi spatial-api_spatial-api
+scripts/run_local.sh
+```
+
 ## Data
 
 ###Build

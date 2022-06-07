@@ -5,20 +5,20 @@
 
 usage()
 {
-  echo "Usage: $0 [-d] [-r] [-h]"
-  echo "Default action is to create and bring up the database and MSAPI containers"
-  echo " -d Down and destroy containers before bringing them up"
-  echo " -l Load data from Neo4J into database tables after a -d"
+  echo "Usage: $0 [-d] [-s] [-t] [-h]"
+  echo "Default action is to do nothing"
+  echo " -d Rebuild DB"
+  echo " -s Rebuild Server"
   echo " -t run the Tests after bringing up the containers"
   echo " -h Help"
   exit 2
 }
 
 unset VERBOSE
-while getopts 'dlth' c; do
+while getopts 'dsth' c; do
   case $c in
-    d) DOWN=true ;;
-    l) LOAD=true ;;
+    d) DB=true ;;
+    s) SERVER=true ;;
     t) TESTS=true ;;
     h|?) usage ;;
   esac
@@ -34,25 +34,30 @@ if [[ $status != 0 ]] ; then
     exit
 fi
 
-if [ $DOWN ]; then
-  echo ">>> Shut down and destroy containers before bringing them up..."
-  echo
-  docker-compose -f docker-compose.local.yml down --rmi all
+if [ $DB ] || [ $SERVER ]; then
+  docker network create shared-web
 fi
 
-echo
-echo ">>> Create and bring up the database and MSAPI containers..."
-echo
-docker network create shared-web
-docker-compose -f docker-compose.local.yml up --build -d
-sleep 5
-docker-compose -f docker-compose.yml up --build -d
+if [ $DB ]; then
+  echo ">>> Shut down and destroy DB container before bringing it up..."
+  echo
+  docker-compose -f docker-compose.local.yml down --rmi all
+  docker-compose -f docker-compose.local.yml up --build -d
 
-if [ $DOWN -a $LOAD ]; then
   echo
   echo ">>> Rebuilding database after destroying its container..."
   echo
   (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py)
+
+  (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/cell_annotation_manager.py --load)
+  (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py --process_json)
+fi
+
+if [ $SERVER ]; then
+  echo ">>> Shut down and destroy SERVER container before bringing it up..."
+  echo
+  docker-compose -f docker-compose.yml down --rmi all
+  docker-compose -f docker-compose.yml up --build -d
 fi
 
 if [ $TESTS ]; then
@@ -62,6 +67,12 @@ if [ $TESTS ]; then
   ./scripts/search_hubmap_id.sh
   ./scripts/spatial_search_hubmap_id.sh
   ./scripts/spatial_search_point.sh
+fi
+
+if [ ! $DB ] && [ ! $SERVER ] && [ ! $TESTS ] ; then
+  echo "Nothing to do?!"
+  echo
+  usage
 fi
 
 echo
