@@ -32,6 +32,21 @@ class PostgresqlManager(object):
     def commit(self) -> None:
         self.conn.commit()
 
+    def insert(self, sql: str) -> int:
+        id: int = None
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+            self.conn.commit()
+            # get the generated id back
+            id = cursor.fetchone()[0]
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return id
 
     def get_cell_marker_id(self, marker: str) -> int:
         try:
