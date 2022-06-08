@@ -54,7 +54,6 @@ paths:
   '/spatial-search/hubmap_id':
     post:
       summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
-      parameters:
       requestBody:
         content:
           application/json:
@@ -74,7 +73,6 @@ paths:
   '/spatial-search/point':
     post:
       summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
-      parameters:
       requestBody:
         content:
           application/json:
