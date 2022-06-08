@@ -180,7 +180,8 @@ class SpatialManager(object):
             sql += " AND relative_spatial_entry_iri = %(relative_spatial_entry_iri)s"
         sql += ';'
         recs: List[str] = self.postgresql_manager.select(sql, {
-            'sample_hubmap_id': sample_hubmap_id, 'relative_spatial_entry_iri': relative_spatial_entry_iri
+            'sample_hubmap_id': sample_hubmap_id,
+            'relative_spatial_entry_iri': relative_spatial_entry_iri
         })
         logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:

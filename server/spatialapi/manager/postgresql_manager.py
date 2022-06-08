@@ -165,6 +165,7 @@ class PostgresqlManager(object):
         data: List[int] = None
         try:
             cursor = self.conn.cursor()
+            # https://www.psycopg.org/docs/usage.html#query-parameters
             cursor.execute(query, vars)
             data = [row[0] for row in cursor.fetchall()]
             logger.info(f'Returned {len(data)} rows')

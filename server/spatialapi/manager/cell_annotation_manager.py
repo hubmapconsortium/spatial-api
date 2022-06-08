@@ -65,7 +65,7 @@ class CellAnnotationManager(object):
 
 
     def load_annotation_details(self):
-        #self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l3.*$', 'Afferent / Efferent Arteriole Endothelial')
+        self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l3.*$', 'Afferent / Efferent Arteriole Endothelial')
         self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l2.*$', 'Afferent / Efferent Arteriole Endothelial')
         self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l1.*$', 'Ascending Thin Limb')
 
