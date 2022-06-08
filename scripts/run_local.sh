@@ -52,6 +52,10 @@ if [ $DB ]; then
   docker-compose -f docker-compose.local.yml up --build -d
 
   echo
+  echo ">>> Sleeping to give the DB a chance to start before rebuilding it..."
+  sleep 5
+
+  echo
   echo ">>> Rebuilding database after destroying its container..."
   echo
   (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py)

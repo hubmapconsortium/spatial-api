@@ -11,7 +11,7 @@ curl --verbose --request POST \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHMale",
-  "radius": 250,
+  "radius": 270,
   "x": 10, "y": 10, "z": 10
   }'
 echo

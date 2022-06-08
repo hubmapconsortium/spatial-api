@@ -108,6 +108,7 @@ if __name__ == '__main__':
                         help='load cell_annotation_details from scraping Azimuth data from web page')
     parser.add_argument("-c", '--check', action="store_true",
                         help='check cell_annotation_details and related tables by scraping Azimuth data from web page')
+    # (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/cell_annotation_manager.py -d 'Connecting Tubule')
     parser.add_argument("-d", "--detail_cell_type_name", type=str,
                         help='dump cell_anotation_details of cell_type_name')
     parser.add_argument("-m", "--get_cell_marker_id", type=str,

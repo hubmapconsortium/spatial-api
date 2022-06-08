@@ -145,9 +145,12 @@ class SpatialManager(object):
     def find_within_radius_at_origin(self, radius: float, x: float, y: float, z: float) -> List[int]:
         sql: str =\
             f"""SELECT sample_hubmap_id FROM {self.table}
-            WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ({x} {y} {z})'), {radius});
+            WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
             """
-        return self.postgresql_manager.select(sql)
+        return self.postgresql_manager.select(sql, {
+            'radius': radius,
+            'x': x, 'y': y, 'z': z
+        })
 
     def find_relative_to_spatial_entry_iri_within_radius_from_point(self,
                                                                     spatial_entry_iri: str,
@@ -156,27 +159,35 @@ class SpatialManager(object):
                                                                     ) -> List[int]:
         sql: str =\
             f"""SELECT sample_hubmap_id FROM {self.table}
-            WHERE relative_spatial_entry_iri = '{spatial_entry_iri}'
-            AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ({x} {y} {z})'), {radius});
+            WHERE relative_spatial_entry_iri = %(spatial_entry_iri)s
+            AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
             """
-        return self.postgresql_manager.select(sql)
+        return self.postgresql_manager.select(sql, {
+            'spatial_entry_iri': spatial_entry_iri,
+            'radius': radius,
+            'x': x, 'y': y, 'z': z
+        })
 
-    # This should probably be a Ne04J query until we get all of the data with rui_locations...
-    def hubmap_id_sample_rui_location(self, hubmap_id: str, relative_spatial_entry_iri=None) -> dict:
+    def hubmap_id_sample_rui_location(self,
+                                      sample_hubmap_id: str,
+                                      relative_spatial_entry_iri=None
+                                      ) -> dict:
         sql: str =\
             f"""SELECT sample_rui_location FROM {self.table}
-            WHERE sample_hubmap_id = '{hubmap_id}'
+            WHERE sample_hubmap_id = %(sample_hubmap_id)s
             """
         if relative_spatial_entry_iri is not None:
-            sql += f" AND relative_spatial_entry_iri = '{relative_spatial_entry_iri}'"
+            sql += " AND relative_spatial_entry_iri = %(relative_spatial_entry_iri)s"
         sql += ';'
-        recs: List[str] = self.postgresql_manager.select(sql)
+        recs: List[str] = self.postgresql_manager.select(sql, {
+            'sample_hubmap_id': sample_hubmap_id, 'relative_spatial_entry_iri': relative_spatial_entry_iri
+        })
         logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:
-            abort(json_error(f'The attributes hibmap_id: {hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
+            abort(json_error(f'The attributes hibmap_id: {sample_hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
         if len(recs) != 1:
-            logger.error(f'Query against a single sample_hubmap_id={hubmap_id} returned multiple rows')
-        logger.info(f'hubmap_id_sample_rui_location(hubmap_id: {hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
+            logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
+        logger.info(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
 
     def find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id(self,
@@ -199,19 +210,21 @@ class SpatialManager(object):
                     INNER JOIN cell_annotation_details
                     ON cell_annotation_details.id = cell_types.cell_annotation_details_id
                     WHERE
-                    cell_annotation_details.cell_type_name = '{cell_type_name}'
+                    cell_annotation_details.cell_type_name = %(cell_type_name)s
                     AND"""
-
         sql +=\
-            f""" {self.table}.relative_spatial_entry_iri = '{relative_spatial_entry_iri}'
-                AND ST_3DDWithin(sample_geom,
-                    ST_GeomFromText(
-                        'POINTZ({sample_rui_location['x_dimension']} {sample_rui_location['y_dimension']} {sample_rui_location['z_dimension']})'
-                    ),
-                    {radius});
+            f""" {self.table}.relative_spatial_entry_iri = %(relative_spatial_entry_iri)s
+                AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
             """
         logger.debug(f"find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id({relative_spatial_entry_iri}, {radius}, {hubmap_id}, {cell_type_name}): sql: {sql}")
-        return self.postgresql_manager.select(sql)
+        return self.postgresql_manager.select(sql, {
+            'cell_type_name': cell_type_name,
+            'relative_spatial_entry_iri': relative_spatial_entry_iri,
+            'x': sample_rui_location['x_dimension'],
+            'y': sample_rui_location['y_dimension'],
+            'z': sample_rui_location['z_dimension'],
+            'radius': radius
+        })
 
 
     def find_within_radius_at_sample_hubmap_id_and_target(self,
