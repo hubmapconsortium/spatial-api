@@ -32,21 +32,6 @@ class PostgresqlManager(object):
     def commit(self) -> None:
         self.conn.commit()
 
-    def insert(self, sql: str) -> int:
-        id: int = None
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql)
-            self.conn.commit()
-            # get the generated id back
-            id = cursor.fetchone()[0]
-        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
-            self.conn.rollback()
-            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
-        finally:
-            if cursor is not None:
-                cursor.close()
-        return id
 
     def get_cell_marker_id(self, marker: str) -> int:
         try:
@@ -103,27 +88,6 @@ class PostgresqlManager(object):
                 cursor.close()
         return results[0]
 
-    def dump_anotation_detail_of_cell_type_name(self, cell_type_name: str) -> List:
-        sql: str =\
-            "SELECT cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id, array_agg(cm.marker) AS markers " \
-            " FROM public.cell_annotation_details AS cad" \
-            " JOIN public.cell_annotation_details_marker AS cadm ON cadm.cell_annotation_details_id = cad.id" \
-            " LEFT JOIN public.cell_marker AS cm ON cadm.cell_marker_id = cm.id" \
-            f" WHERE cad.cell_type_name = '{cell_type_name}'" \
-            " GROUP BY cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id"
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql)
-            data = cursor.fetchall()
-            logger.info(f'Returned {len(data)} rows')
-        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
-            self.conn.rollback()
-            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
-        finally:
-            if cursor is not None:
-                cursor.close()
-        return data[0]
-
     # It seems that the data from the PSC files contains "Cell" while the web page data does not...
     def remove_cell_from_cell_type_name(self, cell_type_name: str) -> str:
         import re
@@ -174,11 +138,33 @@ class PostgresqlManager(object):
     def get_missing_cell_type_names(self) -> List[str]:
         return self.missing_cell_type_names
 
-    def select(self, sql: str) -> List[int]:
+    def dump_anotation_detail_of_cell_type_name(self, cell_type_name: str) -> List:
+        sql: str =\
+            "SELECT cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id, array_agg(cm.marker) AS markers " \
+            " FROM public.cell_annotation_details AS cad" \
+            " JOIN public.cell_annotation_details_marker AS cadm ON cadm.cell_annotation_details_id = cad.id" \
+            " LEFT JOIN public.cell_marker AS cm ON cadm.cell_marker_id = cm.id" \
+            " WHERE cad.cell_type_name = %(cell_type_name)s" \
+            " GROUP BY cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id"
+        try:
+            cursor = self.conn.cursor()
+            # https://www.psycopg.org/docs/usage.html#query-parameters
+            cursor.execute(sql, {'cell_type_name': cell_type_name})
+            data = cursor.fetchall()
+            logger.info(f'Returned {len(data)} rows')
+        except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
+            self.conn.rollback()
+            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return data[0]
+
+    def select(self, query: str, vars: dict) -> List[int]:
         data: List[int] = None
         try:
             cursor = self.conn.cursor()
-            cursor.execute(sql)
+            cursor.execute(query, vars)
             data = [row[0] for row in cursor.fetchall()]
             logger.info(f'Returned {len(data)} rows')
         except (Exception, psycopg2.DatabaseError) as e:
