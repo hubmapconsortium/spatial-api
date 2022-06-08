@@ -10,14 +10,14 @@ scripts/run_local.sh -s
 ## Database
 To rebuld the database in a Docker container.
 
-On startup it will process the file `db/initdb.d/initdb.sql` which
-will define tables and stored procedures.
-
 ```bash
 scripts/run_local.sh -d
 ```
 
-###Build
+On startup it will process the file `db/initdb.d/initdb.sql` which
+will define tables and stored procedures.
+
+###Build at PSC
 To build the json, copy it to the PSC and build.
 ```bash
 cd server
@@ -26,7 +26,13 @@ export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manage
 ```
 
 ## Testing
+To run the available test scripts against the server and database
 
+```bash
+scripts/run_local.sh -t
+```
+
+## Verification
 You can use the [HuBMAP CCF Exploration])[https://portal.hubmapconsortium.org/ccf-eui] tool to do some cursory testing
 of the items within a radius of a point MSAPI Endpoints.
 

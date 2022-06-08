@@ -81,7 +81,7 @@ $ docker push hubmap/spatial-api:latest
 
 For PROD, push the released version/tag that you have built above.
 ````bash
-$ docker push hubmap/spatial-api:1.0.2
+$ docker push hubmap/spatial-api:v1.0.2
 ````
 
 ### PROD Documenting the Docker image
