@@ -16,7 +16,7 @@ security:
 paths:
   '/search/hubmap_id/{hubmap_id}/radius/{radius}/target/{target}':
     get:
-      summary: List the HubMAP IDs associated with the target that are located within the radius
+      summary: List the hubmap_ids associated with the target body that are located within the radius of the centroid of the hubmap_id specified
       operationId: search_hubmap_id_to_radius
       parameters:
         - name: hubmap_id
@@ -42,7 +42,7 @@ paths:
             example: VHMale
       responses:
         '200':
-          description: List of HubMAP IDs that meet the radius and target search from the center of the geometry of the HubMAP IDs
+          description: List of HubMAP IDs that meet the radius and target criteria given
           content:
             application/json:
               schema:
@@ -53,7 +53,8 @@ paths:
           description: No HubMAP IDs were found
   '/spatial-search/hubmap_id':
     post:
-      summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
+      summary: List the hubmap_ids (with samples having the cell_type) associated with the target body that are located within the radius of the centroid of the hubmap_id specified
+      operationId: spatial_search_hubmap_id
       requestBody:
         content:
           application/json:
@@ -61,7 +62,7 @@ paths:
               $ref: '#/components/schemas/SpatialSearchRequest'
       responses:
         '200':
-          description: List of HubMAP IDs that meet the radius and target given
+          description: List of HubMAP IDs that meet the radius, target, and cell_type criteria given
           content:
             application/json:
               schema:
@@ -72,7 +73,8 @@ paths:
           description: No HubMAP IDs were found
   '/spatial-search/point':
     post:
-      summary: List the HubMAP IDs associated with the target that are located within the radius having a cell_type
+      summary: List the hubmap_ids associated with the target body that are located within the radius of the point <x, y, z>
+      operationId: spatial_search_point
       requestBody:
         content:
           application/json:
@@ -80,7 +82,7 @@ paths:
               $ref: '#/components/schemas/SpatialSearchPointRequest'
       responses:
         '200':
-          description: List of HubMAP IDs that meet the radius and target given
+          description: List of HubMAP IDs that meet the radius and target criteria given
           content:
             application/json:
               schema:
