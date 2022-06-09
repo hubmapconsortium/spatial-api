@@ -51,7 +51,7 @@ For production the deployment machine is `ingest.hubmapconsortium.org`.
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.hubmapconsortium.org
 ...
 ```
-You should now have the most recent version of the code which should be in the `master` branch.
+You should now have the most recent version of the code which should be in the `main` branch.
 You can also deploy other branches on DEV for testing.
 
 ### Build Docker Image
@@ -60,10 +60,10 @@ In building the latest image specify the latest tag:
 $ docker build -t hubmap/spatial-api:latest .
 ````
 
-In building a release version of the image, use the `master` branch, and specify a version tag.
+In building a release version of the image, use the `main` branch, and specify a version tag.
 You can see the previous version tags at [DockerHub Spatial APi](https://github.com/hubmapconsortium/spatial-api/releases/).
 ````bash
-$ docker build -t hubmap/spatial-api:1.0.2 .
+$ docker build -t hubmap/spatial-api:v1.0.0 .
 ````
 
 ### Publish the Image to DockerHub
@@ -81,7 +81,7 @@ $ docker push hubmap/spatial-api:latest
 
 For PROD, push the released version/tag that you have built above.
 ````bash
-$ docker push hubmap/spatial-api:v1.0.2
+$ docker push hubmap/spatial-api:v1.0.0
 ````
 
 ### PROD Documenting the Docker image
@@ -119,25 +119,25 @@ For PROD, download the new numbered release image from DockerHub to the deployme
 directory. If you build the image on the deployment server you can skip this step as it should already be on the server.
 You can use `docker images` to confirm this.
 ````bash
-$ docker pull hubmap/spatial-api:1.0.2
+$ docker pull hubmap/spatial-api:v1.0.0
 ````
-For DEV, you can use `latest` take rather than the `1.0.2` tag above.
+For DEV, you can use `latest` take rather than the `v1.0.0` tag above.
 
 Determine the current image version. This will show you which Docker image the process is running under.
 If the process has stopped for some reason you should try `docker images`.
 ````bash
 $ docker ps
 CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS                  PORTS                          NAMES
-407cbcc4d15d        hubmap/spatial-api:1.0.1    "/usr/local/bin/entr…"   3 weeks ago         Up 3 weeks (healthy)    0.0.0.0:5000->5000/tcp         spatial-api
+407cbcc4d15d        hubmap/spatial-api:v1.0.0    "/usr/local/bin/entr…"   3 weeks ago         Up 3 weeks (healthy)    0.0.0.0:5000->5000/tcp         spatial-api
 ...
 ````
 Stop the process associated with container (Docker image) and delete it.
 ````bash
-$ export SPATIAL_API_VERSION=1.0.1; docker-compose -f docker-compose.deployment.yml down --rmi all
+$ export SPATIAL_API_VERSION=v1.0.0; docker-compose -f docker-compose.deployment.yml down --rmi all
 ````
 Start the new container using the image just pulled from DockerHub.
 ````bash
-$ export SPATIAL_API_VERSION=1.0.2; docker-compose -f docker-compose.deployment.yml up -d --no-build
+$ export SPATIAL_API_VERSION=v1.0.0; docker-compose -f docker-compose.deployment.yml up -d --no-build
 ````
 
 Make sure that the new images has started.
@@ -149,7 +149,7 @@ CONTAINER ID        IMAGE                       COMMAND                  CREATED
 
 The production version of the server should be running at...
 ````bash
-https://spatial.hubmapconsortium.org/
+https://spatial.api.hubmapconsortium.org/
 ````
 
 ### Examine Server Logs
