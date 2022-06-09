@@ -40,9 +40,9 @@ $ sudo /bin/su - centos
 $ cd hubmap/spatial-api
 $ pwd
 /home/centos/hubmap/spatial-api
-$ git checkout master
+$ git checkout main
 $ git status
-# On branch master
+# On branch main
 ...
 $ git pull
 ```
@@ -87,7 +87,7 @@ $ docker push hubmap/spatial-api:v1.0.0
 ### PROD Documenting the Docker image
 
 Reelase workflow:
-- merge code to the release branch (typically 'master') in github
+- merge code to the release branch (typically 'main') in github
 - bump the version number in ./VERSION
 - create a new github release and tag
 - publish a new image with new tag to DockerHub
@@ -98,10 +98,10 @@ Reelase workflow:
 The version found in the Released Version that you will create below must
 match that of the ./VERSION file.
 Change this file before building the Docker image that you will push to Docker HUB.
-The version will show up on [VERSION](https://github.com/hubmapconsortium/spatial-api/blob/master/VERSION).
+The version will show up on [VERSION](https://github.com/hubmapconsortium/spatial-api/blob/main/VERSION).
 
 
-#### Create a new GitHUB Release Tag
+#### Create a new Github Release Tag
 
 For PROD, after you've created the numbered release you should save it in
 the project [Release](https://github.com/hubmapconsortium/spatial-api/releases/) page.
@@ -144,7 +144,7 @@ Make sure that the new images has started.
 ````bash
 $ docker ps
 CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS                            PORTS                       NAMES
-5c0bdb68bd22        hubmap/spatial-api:1.0.2    "/usr/local/bin/entr…"   6 seconds ago       Up 4 seconds (health: starting)   0.0.0.0:5000->5000/tcp      spatial-api
+5c0bdb68bd22        hubmap/spatial-api:v1.0.0    "/usr/local/bin/entr…"   6 seconds ago       Up 4 seconds (health: starting)   0.0.0.0:5000->5000/tcp      spatial-api
 ````
 
 The production version of the server should be running at...
