@@ -182,7 +182,9 @@ class PostgresqlManager(object):
             cursor = self.conn.cursor()
             # https://www.psycopg.org/docs/usage.html#query-parameters
             cursor.execute(query, vars)
-            data = [row[0] for row in cursor.fetchall()]
+            all: list = cursor.fetchall()
+            #import pdb; pdb.set_trace();
+            data = [row[0] for row in all]
             logger.info(f'Returned {len(data)} rows')
         except (Exception, psycopg2.DatabaseError) as e:
             logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
@@ -190,3 +192,16 @@ class PostgresqlManager(object):
             if cursor is not None:
                 cursor.close()
         return data
+
+    def select_all(self, query: str, vars=None) -> list:
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(query, vars)
+            all: list = cursor.fetchall()
+            logger.info(f'Returned {len(all)} rows')
+        except (Exception, psycopg2.DatabaseError) as e:
+            logger.error(f'Exception Type: {e.__class__.__name__}: {e}')
+        finally:
+            if cursor is not None:
+                cursor.close()
+        return all
