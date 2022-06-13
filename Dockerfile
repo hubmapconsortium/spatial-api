@@ -9,7 +9,7 @@ RUN python3 -m pip install --upgrade pip
 
 WORKDIR /app
 COPY requirements.txt .
-COPY server/resources/app.properties resources
+
 RUN pip install -r requirements.txt
 
 WORKDIR /app/server
