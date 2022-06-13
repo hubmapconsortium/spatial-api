@@ -21,7 +21,7 @@ class SpatialManager(object):
 
         spatial_config = config['spatial']
         self.table = spatial_config.get('Table')
-        logger.info(f'SpatialManager: Table: {self.table}')
+        logger.info(f'{self.__class__.__name__}: Table: {self.table}')
 
     def close(self):
         logger.info(f'Neo4jManager: Closing connection to Neo4J & PostgreSQL')
@@ -142,7 +142,7 @@ class SpatialManager(object):
             self.insert_rec_relative_to_spatial_entry_iri(rec)
 
 
-    def find_within_radius_at_origin(self, radius: float, x: float, y: float, z: float) -> List[int]:
+    def find_within_radius_at_origin(self, radius: float, x: float, y: float, z: float) -> List[str]:
         sql: str =\
             f"""SELECT sample_hubmap_id FROM {self.table}
             WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
@@ -183,12 +183,12 @@ class SpatialManager(object):
             'sample_hubmap_id': sample_hubmap_id,
             'relative_spatial_entry_iri': relative_spatial_entry_iri
         })
-        logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
+        #logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:
             abort(json_error(f'The attributes hibmap_id: {sample_hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
         if len(recs) != 1:
             logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
-        logger.info(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
+        #logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
 
     def find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id(self,
@@ -232,8 +232,9 @@ class SpatialManager(object):
                                                           radius: float,
                                                           hubmap_id: str,
                                                           relative_spatial_entry_iri: str
-                                                          ) -> List[int]:
-        sample_rui_location: dict = self.hubmap_id_sample_rui_location(hubmap_id, relative_spatial_entry_iri)
+                                                          ) -> List[str]:
+        sample_rui_location: dict = \
+            self.hubmap_id_sample_rui_location(hubmap_id, relative_spatial_entry_iri)
         return self.find_within_radius_at_origin(radius,
                                                  sample_rui_location['x_dimension'],
                                                  sample_rui_location['y_dimension'],

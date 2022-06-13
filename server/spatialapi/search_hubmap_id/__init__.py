@@ -1,6 +1,7 @@
 from flask import Blueprint, redirect, abort, current_app, jsonify, make_response, session, g
 import configparser
 from spatialapi.manager.spatial_manager import SpatialManager
+from typing import List
 from spatialapi.utils import json_error
 from http import HTTPStatus
 import logging
@@ -27,7 +28,7 @@ def search_hubmap_id_to_radius(id, r, t):
     config.read(app_properties)
     spatial_manager = SpatialManager(config)
 
-    results = spatial_manager.find_within_radius_at_sample_hubmap_id_and_target(r, id, t)
+    results: List[str] = spatial_manager.find_within_radius_at_sample_hubmap_id_and_target(r, id, t)
     logger.info(f'search_hubmap_id_to_radius; find_within_radius_at_hubmap_id({id},{r}, {t}): {results}')
     response = make_response(jsonify(hubmap_ids=results), 200)
     response.headers["Content-Type"] = "application/json"

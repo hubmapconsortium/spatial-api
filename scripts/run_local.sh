@@ -55,6 +55,12 @@ if [ $DB ]; then
   echo ">>> Sleeping to give the DB a chance to start before rebuilding it..."
   sleep 5
 
+  DATA_OUT_JSON=scripts/psc/data_out.json
+  if [[ ! -f $DATA_OUT_JSON ]]; then
+    echo "ERROR: You need to build and copy the $DATA_OUT_JSON file from the PSC machine."
+    exit 1
+  fi
+
   echo
   echo ">>> Rebuilding database after destroying its container..."
   echo
@@ -65,9 +71,24 @@ if [ $DB ]; then
 fi
 
 if [ $SERVER ]; then
+  SERVER_LOG=server/log
+  mkdir -p $SERVER_LOG
+
+  APP_LOCAL_PROPERTIES=server/resources/app.local.properties
+  if [[ ! -f $APP_LOCAL_PROPERTIES ]]; then
+    echo "ERROR: You need to create a $APP_LOCAL_PROPERTIES file."
+    exit 1
+  fi
+  APP_PROPERTIES=server/resources/app.properties
+  if [[ ! -f $APP_PROPERTIES ]]; then
+    echo "ERROR: You need to create a $APP_PROPERTIES file."
+    exit 1
+  fi
+
   echo ">>> Shut down and destroy SERVER container before bringing it up..."
   echo
   docker-compose -f docker-compose.yml down --rmi all
+  cp /dev/null ${SERVER_LOG}/uwsgi-spatial-api.log
   docker-compose -f docker-compose.yml up --build -d
 fi
 
