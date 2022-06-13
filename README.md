@@ -1,4 +1,4 @@
-# spatial-api
+# HuBMAP Spatial API
 
 This information will help you get the Spatian API up in running whether locally or on an environment.
 
