@@ -23,7 +23,8 @@ services:
     networks:
       - gateway_hubmap
     volumes:
-      - ./server/resources:/app/server/resources
+      - ./server/resources/app.properties:/app/server/resources/app.properties
+      - ./server/log:/app/server/log
     ports:
       - '5000:5000'
 

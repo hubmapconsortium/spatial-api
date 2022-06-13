@@ -21,6 +21,7 @@ services:
       # The official postgres docker image will run .sql scripts found in the /docker-entrypoint-initdb.d/ folder.
       - ./db/initdb.d:/docker-entrypoint-initdb.d/
       - ./server/resources/app.properties:/app/server/resources/app.properties
+      - ./server/log:/app/server/log
 
 networks:
   shared-web:
