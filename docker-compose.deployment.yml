@@ -26,7 +26,7 @@ services:
       - ./server/resources/app.properties:/app/server/resources/app.properties
       - ./server/log:/app/server/log
     ports:
-      - '5000:5000'
+      - '5001:5000'
 
 networks:
   gateway_hubmap:

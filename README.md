@@ -197,27 +197,6 @@ The specification .yml file should be found at the top lever of the project, and
 All of the HubMAP APIs are found [here](https://smart-api.info/registry?q=hubmap).
 They are reloaded from the `master` branch specification .yml file sometime after midnight Eastern Time US.
 
-## hubmapconsortium/gateway
-
-It is important to remember to add each new endpoint to the PROD [hubmapconsortium/gateway branch test-release PROD](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.prod.json)
-and DEV [hubmapconsortium/gateway branch test-release DEV](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.dev.json)
-files under the section for the micro-service (e.g., `spatial-api.dev.hubmapconsortium.org`).
-```bash
-$ git clone  git@github.com:hubmapconsortium/gateway.git
-$ git checkout test-release
-```
-
-Add the endpoint to the section `spatial-api.dev.hubmapconsortium.org` section:
-```json
-  "spatial-api.dev.hubmapconsortium.org": [
-    {
-      "method": "GET",
-      "endpoint": "/codes/<*>/codes",
-      "auth": false
-    },
-```
-
-
 ## Method Verification Data
 
 It was important to verify that the manner in which we are loading spatial data into the `sample` table produces
