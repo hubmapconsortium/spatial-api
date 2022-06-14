@@ -244,8 +244,25 @@ class SpatialManager(object):
 # NOTE: When running in a local docker container the tables are created automatically.
 # TODO: Nothing is being done with units.
 if __name__ == '__main__':
+    import argparse
+
+    class RawTextArgumentDefaultsHelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawTextHelpFormatter
+    ):
+        pass
+
+    # https://docs.python.org/3/howto/argparse.html
+    parser = argparse.ArgumentParser(
+        description='Insert organ data into the database',
+        formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
+                        help='config file to use')
+
+    args = parser.parse_args()
+
     config = configparser.ConfigParser()
-    config.read('resources/app.local.properties')
+    config.read(args.config)
     manager = SpatialManager(config)
     # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
     # RK:

@@ -106,6 +106,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Tissue Sample Cell Type Manager',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
+                        help='config file to use')
     parser.add_argument("-b", '--build_json', action="store_true",
                         help='build the .json file that is processed at the psc')
     parser.add_argument("-p", '--process_json', action="store_true",
@@ -116,7 +118,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
-    config.read('resources/app.local.properties')
+    config.read(args.config)
     manager = TissueSampleCellTypeManager(config)
 
     psc_working_dir: str = '~/bin/psc'

@@ -150,7 +150,7 @@ Finally, compare the lists returned. ''',
         sample_rui_location: dict = \
             manager.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, args.relative_spatial_entry_iri)
         distance: float = manager.distance_from_sample_rui_location(sample_rui_location)
-        logger.info(f"sample_hubmap_id: {sample_hubmap_id} distance: {distance}")
+        logger.info(f"sample_hubmap_id: {sample_hubmap_id} distance: {distance} x: {sample_rui_location['x_dimension']} y: {sample_rui_location['y_dimension']} z: {sample_rui_location['z_dimension']}")
 
     logger.info("Done!")
 
