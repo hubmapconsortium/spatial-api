@@ -1,0 +1,20 @@
+version: '3.7'
+# https://docs.docker.com/compose/compose-file/compose-file-v3/
+
+services:
+  spatial_db:
+    container_name: spatial_db
+    hostname: spatial_db
+    build:
+      context: .
+      dockerfile: Dockerfile-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spatial
+      POSTGRES_PASSWORD: test4now
+      POSTGRES_DB: spatial
+    ports:
+      - "5432:5432"
+    volumes:
+      # The official postgres docker image will run .sql scripts found in the /docker-entrypoint-initdb.d/ folder.
+      - ./db/initdb.d:/docker-entrypoint-initdb.d/
