@@ -104,6 +104,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Tissue Sample Cell Type Manager',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
+                        help='config file to use')
     parser.add_argument("-l", '--load', action="store_true",
                         help='load cell_annotation_details from scraping Azimuth data from web page')
     parser.add_argument("-c", '--check', action="store_true",
@@ -117,7 +119,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
-    config.read('resources/app.local.properties')
+    config.read(args.config)
     manager = CellAnnotationManager(config)
 
     try:
