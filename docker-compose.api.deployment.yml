@@ -10,8 +10,6 @@ services:
     environment:
       - HOST_GID=${HOST_GID:-1000}
       - HOST_UID=${HOST_UID:-1000}
-      - FLASK_APP=spatialapi
-      - FLASK_ENV=development
     init: true
     restart: always
     healthcheck:
@@ -23,9 +21,8 @@ services:
     networks:
       - gateway_hubmap
     volumes:
-      - ./server:/app/server
-    ports:
-      - '5000:5000'
+      - ./server/resources/app.properties:/app/server/resources/app.properties
+      - ./server/log:/app/server/log
 
 networks:
   gateway_hubmap:

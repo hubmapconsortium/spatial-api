@@ -96,7 +96,7 @@ class PostgresqlManager(object):
         except (Exception, psycopg2.DatabaseError, psycopg2.errors.UniqueViolation) as e:
             self.conn.rollback()
             logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
-            #abort(json_error(f'Request Body: the attribute hibmap_id has no rui_location data', HTTPStatus.CONFLICT))
+            #abort(json_error(f'Request Body: the attribute hubmap_id has no rui_location data', HTTPStatus.CONFLICT))
             raise e
         finally:
             if cursor is not None:
