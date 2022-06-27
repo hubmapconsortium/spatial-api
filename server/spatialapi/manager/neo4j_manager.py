@@ -15,6 +15,7 @@ class Neo4jManager(object):
         username: str = neo4j_config.get('Username')
         password: str = neo4j_config.get('Password')
         logger.info(f'Neo4jManager: Username: {username} Server: {server}')
+        # Could throw: neo4j.exceptions.ServiceUnavailable
         self.driver = neo4j.GraphDatabase.driver(server, auth=(username, password))
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
@@ -33,15 +34,21 @@ class Neo4jManager(object):
 
     def process_record(self, record: dict) -> dict:
         try:
-            organ: dict = {'uuid': record.get('organ_uuid'),
-                           'code': record.get('organ_code')
-                           }
+            organ: dict = {
+                'uuid': record.get('organ_uuid'),
+                'code': record.get('organ_code')
+            }
             donor_metadata: str = record.get('donor_metadata')
+            if donor_metadata is None:
+                logger.info(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
+                return None
             organ_donor_data: dict = json.loads(donor_metadata)
+
             organ_donor_data_list: List[dict] = organ_donor_data['organ_donor_data']
-            donor: dict = {'uuid': record.get('donor_uuid'),
-                           'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
-                           }
+            donor: dict = {
+                'uuid': record.get('donor_uuid'),
+                'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
+            }
             try:
                 rui_location: str = record.get('sample_rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
@@ -54,15 +61,17 @@ class Neo4jManager(object):
                 logger.info(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
                 return None
 
-            sample: dict = {'uuid': record.get('sample_uuid'),
-                            'hubmap_id': record.get('sample_hubmap_id'),
-                            'specimen_type': record.get('sample_specimen_type'),
-                            'rui_location': rui_location_json
-                            }
-            rec: dict = {'sample': sample,
-                         'organ': organ,
-                         'donor': donor
-                         }
+            sample: dict = {
+                'uuid': record.get('sample_uuid'),
+                'hubmap_id': record.get('sample_hubmap_id'),
+                'specimen_type': record.get('sample_specimen_type'),
+                'rui_location': rui_location_json
+            }
+            rec: dict = {
+                'sample': sample,
+                'organ': organ,
+                'donor': donor
+            }
             return rec
         except KeyError:
             return None

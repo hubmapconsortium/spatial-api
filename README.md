@@ -235,13 +235,13 @@ $ ./scripts/run_test.sh
 Running test queries...
 Password for user spatial: 
 -- sqrt(10^2 + 10^2 + 10^2) = 17.321
-SELECT id FROM "public"."geom_test"
+SELECT id FROM geom_test
    WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ(0 0 0)'), 17.32);
  id 
 ----
 (0 rows)
 
-SELECT id FROM "public"."geom_test"
+SELECT id FROM geom_test
    WHERE ST_3DDWithin(geom, ST_GeomFromText('POINTZ(0 0 0)'), 17.321);
  id 
 ----
@@ -257,7 +257,7 @@ says that it should be found.
 
 This cube corresponds to the first cube created in the `db/initdb.d/iniddb.sql` file.
 ```bash
-INSERT INTO "public"."geom_test" (geom)
+INSERT INTO geom_test (geom)
   VALUES (ST_Translate(ST_GeomFromText('MULTIPOLYGON Z(
         ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
         ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),

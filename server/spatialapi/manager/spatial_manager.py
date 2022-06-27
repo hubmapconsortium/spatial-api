@@ -28,26 +28,54 @@ class SpatialManager(object):
         self.neo4j_manager.close()
         self.postgresql_manager.close()
 
-    def create_YZ_plane_at_X(self, x: float, y: float, z: float) -> str:
-        return f"((" \
-               f"{x} {-y} {-z}, " \
-               f"{x} {-y} {z}, " \
-               f"{x} {y} {z}, " \
-               f"{x} {y} {-z}, " \
-               f"{x} {-y} {-z}" \
-               f"))"
+    # Example from https://postgis.net/docs/ST_IsClosed.html
+    # There is a winding order for surfaces: inside->clockwise, outside -> counterclockwise.
+    # ALL of these surfaces are wound counterclockwise which makes them outside surfaces.
+    # They will build a POLYHEDRALSURFACE which ST_IsClosed.
+    #
+    # The naming convention below assumes that you are looking at the object down the Z-axis (positive to negative).
+    # So, Right, Top, and Front surfaces always have x, y, z being positive, and
+    # Left, Bottom, and Back surfaces always have x, y, z being negative.
 
-    def create_XY_plane_at_Z(self, x: float, y: float, z: float) -> str:
-        # f"((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5))," \
+    # https://gis.stackexchange.com/questions/214572/st-makesolid-creating-an-invalid-solid-from-closed-polyhedralsurfacez
+
+    def create_XY_plane_at_Z_Front(self, x: float, y: float, z: float) -> str:
         return f"((" \
                f"{-x} {-y} {z}, " \
-               f"{-x} {y} {z}, " \
-               f"{x} {y} {z}, " \
                f"{x} {-y} {z}, " \
+               f"{x} {y} {z}, " \
+               f"{-x} {y} {z}, " \
                f"{-x} {-y} {z}" \
                f"))"
 
-    def create_XZ_plane_at_Y(self, x: float, y: float, z: float) -> str:
+    def create_XY_plane_at_Z_Back(self, x: float, y: float, z: float) -> str:
+        return f"((" \
+               f"{-x} {-y} {-z}, " \
+               f"{-x} {y} {-z}, " \
+               f"{x} {y} {-z}, " \
+               f"{x} {-y} {-z}, " \
+               f"{-x} {-y} {-z}" \
+               f"))"
+
+    def create_YZ_plane_at_X_Left(self, x: float, y: float, z: float) -> str:
+        return f"((" \
+               f"{-x} {-y} {-z}, " \
+               f"{-x} {-y} {z}, " \
+               f"{-x} {y} {z}, " \
+               f"{-x} {y} {-z}, " \
+               f"{-x} {-y} {-z}" \
+               f"))"
+
+    def create_YZ_plane_at_X_Right(self, x: float, y: float, z: float) -> str:
+        return f"((" \
+               f"{x} {-y} {-z}, " \
+               f"{x} {y} {-z}, " \
+               f"{x} {y} {z}, " \
+               f"{x} {-y} {z}, " \
+               f"{x} {-y} {-z}" \
+               f"))"
+
+    def create_XZ_plane_at_Y_Top(self, x: float, y: float, z: float) -> str:
         return f"((" \
                f"{-x} {y} {-z}, " \
                f"{-x} {y} {z}, " \
@@ -56,26 +84,49 @@ class SpatialManager(object):
                f"{-x} {y} {-z}" \
                f"))"
 
+    def create_XZ_plane_at_Y_Bottom(self, x: float, y: float, z: float) -> str:
+        return f"((" \
+               f"{-x} {-y} {-z}, " \
+               f"{x} {-y} {-z}, " \
+               f"{x} {-y} {z}, " \
+               f"{-x} {-y} {z}, " \
+               f"{-x} {-y} {-z}" \
+               f"))"
+
     # The PostGRIS geometry should be constructed with the centroid of the object being at POINT(0,0,0)
-    def create_multipolygon_geom_with_dimension(self, x: float, y: float, z: float) -> str:
-        return f"'MULTIPOLYGON Z(" \
-               f"{self.create_YZ_plane_at_X(-x/2, y/2, z/2)}" \
-               f",{self.create_YZ_plane_at_X(x/2, y/2, z/2)}" \
-               f",{self.create_XZ_plane_at_Y(x/2, -y/2, z/2)}" \
-               f",{self.create_XZ_plane_at_Y(x/2, y/2, z/2)}" \
-               f",{self.create_XY_plane_at_Z(x/2, y/2, -z/2)}" \
-               f",{self.create_XY_plane_at_Z(x/2, y/2, z/2)}" \
+    def create_geom_with_dimension(self, x: float, y: float, z: float) -> str:
+        # https://postgis.net/workshops/postgis-intro/3d.html
+        # PolyhedralSurface - A 3D figure made exclusively of Polygons
+        # POLYHEDRALSURFACE - A PolyhedralSurface is a contiguous collection of polygons, which share common boundary segments
+        # From this https://gdal.org/development/rfc/rfc64_triangle_polyhedralsurface_tin.html
+        # it appears that a MULTIPOLYGON is actually a collection of surfaces and not a single entity?!
+        #
+        # https://stackoverflow.com/questions/68379566/postgres-postgis-sfcgal-st-3darea-not-working
+        # To represent a mesh surface in Postgres, we should use POLYHEDRALSURFACE.
+        # This geometry is also a collection of polygons: they have to be "adjacent to each other",
+        # AND they all have to be all "outside surfaces."
+        return f"'POLYHEDRALSURFACE Z(" \
+               f"{self.create_XY_plane_at_Z_Front(x/2, y/2, z/2)}" \
+               f",{self.create_XY_plane_at_Z_Back(x/2, y/2, z/2)}" \
+               f",{self.create_YZ_plane_at_X_Left(x/2, y/2, z/2)}" \
+               f",{self.create_YZ_plane_at_X_Right(x/2, y/2, z/2)}" \
+               f",{self.create_XZ_plane_at_Y_Top(x/2, y/2, z/2)}" \
+               f",{self.create_XZ_plane_at_Y_Bottom(x/2, y/2, z/2)}" \
                f" )'"
 
     # TODO: We are doing NOTHING with '*_units' or 'rotation_order' here...
+    # NOTE: When closed surfaces are created with WKT, they are treated as areal rather than solid.
+    # To make them solid, you need to use ST_MakeSolid. Areal geometries have no volume.
+    # ST_MakeSolid — Cast the geometry into a solid. No check is performed. To obtain a valid solid,
+    # the input geometry must be a closed Polyhedral Surface or a closed TIN (see: python3 ./tests/geom.py -c).
     def create_geometry(self, rui_location: dict) -> str:
-        geom: str = self.create_multipolygon_geom_with_dimension(
+        geom: str = self.create_geom_with_dimension(
             rui_location['x_dimension'], rui_location['y_dimension'], rui_location['z_dimension'])
         placement: dict = rui_location['placement']
         return "ST_Translate(" \
                "ST_Scale(" \
                "ST_RotateZ(ST_RotateY(ST_RotateX(" \
-               f"ST_GeomFromText({geom})," \
+               f"ST_MakeSolid({geom})," \
                f" {placement['x_rotation']}), {placement['y_rotation']}), {placement['z_rotation']})," \
                f" {placement['x_scaling']}, {placement['y_scaling']}, {placement['z_scaling']})," \
                f" {placement['x_translation']}, {placement['y_translation']}, {placement['z_translation']})"
@@ -258,12 +309,32 @@ if __name__ == '__main__':
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
                         help='config file to use')
+    parser.add_argument('-p', '--polyhedralsurface', type=str,
+                        help='output a closed POLYHEDRALSURFACE from the three x y z dimensions given and exit')
+    # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py -p '10 10 10')
 
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
     config.read(args.config)
     manager = SpatialManager(config)
+
+    if args.polyhedralsurface is not None:
+        try:
+            xyz_list: List[float] = [float(x) for x in args.polyhedralsurface.split()]
+        except ValueError:
+            logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
+            exit(1)
+        if len(xyz_list) != 3:
+            logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
+            exit(1)
+        x: float = xyz_list[0]
+        y: float = xyz_list[1]
+        z: float = xyz_list[2]
+        logger.info(f'Dimensions given are x: {x}, y: {y}, z: {z}')
+        print(manager.create_geom_with_dimension(x, y, z))
+        exit(0)
+
     # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
     # RK:
     # description: Kidney (Right)

@@ -3,8 +3,8 @@ CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
 SELECT postgis_version();
 
-DROP TABLE IF EXISTS "public"."sample";
-CREATE TABLE IF NOT EXISTS "public"."sample" (
+DROP TABLE IF EXISTS sample;
+CREATE TABLE IF NOT EXISTS sample (
     "id" SERIAL PRIMARY KEY,
     "organ_uuid" text NOT NULL,
     "organ_code" text NOT NULL,
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS "public"."sample" (
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
 -- http://www.bostongis.com/postgis_quickguide_1_4.bqg
-ALTER TABLE "public"."sample" ADD COLUMN IF NOT EXISTS sample_geom geometry(MULTIPOLYGONZ,0);
-ALTER TABLE "public"."sample" ALTER COLUMN sample_geom SET NOT NULL;
-CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(sample_geom);
+ALTER TABLE sample ADD COLUMN IF NOT EXISTS sample_geom geometry(POLYHEDRALSURFACEZ,0);
+ALTER TABLE sample ALTER COLUMN sample_geom SET NOT NULL;
+CREATE INDEX IF NOT EXISTS "geom_sample_index" ON sample USING GIST(sample_geom);
 
 -- Identify tissue samples that are registered in the spatial database by the types of cells contained within.
 
@@ -28,8 +28,8 @@ CREATE INDEX IF NOT EXISTS "geom_sample_index" ON "public"."sample" USING GIST(s
 -- HTML annotation.l3 table under the Kidney reference for azimuth.
 -- https://azimuth.hubmapconsortium.org/references/#Human%20-%20Kidney
 
-DROP TABLE IF EXISTS "public"."cell_annotation_details";
-CREATE TABLE IF NOT EXISTS "public"."cell_annotation_details" (
+DROP TABLE IF EXISTS cell_annotation_details;
+CREATE TABLE IF NOT EXISTS cell_annotation_details (
     "id" SERIAL PRIMARY KEY,
     -- 'cell_type_name' is the column 'Label' from the Annotation Details annotation.l3
     "cell_type_name" text NOT NULL UNIQUE,
@@ -38,14 +38,14 @@ CREATE TABLE IF NOT EXISTS "public"."cell_annotation_details" (
     "ontology_id" text NOT NULL
 );
 
-DROP TABLE IF EXISTS "public"."cell_marker";
-CREATE TABLE IF NOT EXISTS "public"."cell_marker" (
+DROP TABLE IF EXISTS cell_marker;
+CREATE TABLE IF NOT EXISTS cell_marker (
     "id" SERIAL PRIMARY KEY,
     "marker" text NOT NULL UNIQUE
 );
 
-DROP TABLE IF EXISTS "public"."cell_annotation_details_marker";
-CREATE TABLE IF NOT EXISTS "public".cell_annotation_details_marker (
+DROP TABLE IF EXISTS cell_annotation_details_marker;
+CREATE TABLE IF NOT EXISTS cell_annotation_details_marker (
     cell_annotation_details_id INT REFERENCES cell_annotation_details (id),
     cell_marker_id INT REFERENCES cell_marker (id) ON DELETE CASCADE,
     CONSTRAINT cell_annotation_details_id_cell_marker_id_pkey PRIMARY KEY (cell_annotation_details_id, cell_marker_id)
@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS "public".cell_annotation_details_marker (
 
 -- This table holds a row per cell type per sample.
 -- The cell information can be found in the secondary_analysis.h5ad files in the associated datasets (at the PSC)
-DROP TABLE IF EXISTS "public"."cell_types";
-CREATE TABLE IF NOT EXISTS "public"."cell_types" (
+DROP TABLE IF EXISTS cell_types;
+CREATE TABLE IF NOT EXISTS cell_types (
     "id" SERIAL PRIMARY KEY,
     "sample_uuid" text NOT NULL,
     "cell_annotation_details_id" SERIAL REFERENCES cell_annotation_details (id) ON DELETE CASCADE,
@@ -74,8 +74,8 @@ CREATE OR REPLACE PROCEDURE get_cell_marker_sp (
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    INSERT INTO public.cell_marker (marker) VALUES (P_marker) ON CONFLICT DO NOTHING;
-    SELECT id INTO P_id FROM public.cell_marker WHERE marker = P_marker;
+    INSERT INTO cell_marker (marker) VALUES (P_marker) ON CONFLICT DO NOTHING;
+    SELECT id INTO P_id FROM cell_marker WHERE marker = P_marker;
 END
 $$;
 
@@ -110,11 +110,11 @@ DECLARE
     cell_marker_ids INT[];
     cell_marker_id INT;
 BEGIN
-    INSERT INTO public.cell_annotation_details (cell_type_name, obo_ontology_id_uri, ontology_id) VALUES (P_cell_type_name, P_obo_ontology_id_uri, P_ontology_id) RETURNING id INTO P_cell_annotation_details_id;
+    INSERT INTO cell_annotation_details (cell_type_name, obo_ontology_id_uri, ontology_id) VALUES (P_cell_type_name, P_obo_ontology_id_uri, P_ontology_id) RETURNING id INTO P_cell_annotation_details_id;
     CALL create_cell_markers_sp(P_markers, cell_marker_ids);
     FOREACH cell_marker_id IN ARRAY cell_marker_ids
     LOOP
-        INSERT INTO public.cell_annotation_details_marker (cell_annotation_details_id, cell_marker_id) VALUES (P_cell_annotation_details_id, cell_marker_id);
+        INSERT INTO cell_annotation_details_marker (cell_annotation_details_id, cell_marker_id) VALUES (P_cell_annotation_details_id, cell_marker_id);
     END LOOP;
 END
 $$;
@@ -127,8 +127,8 @@ CREATE OR REPLACE PROCEDURE add_cell_type_count_sp (
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    INSERT INTO public.cell_types (sample_uuid, cell_annotation_details_id, cell_type_count)
-     VALUES (P_sample_uuid, (SELECT id from public.cell_annotation_details WHERE cell_type_name = P_cell_type_name), P_cell_type_count)
+    INSERT INTO cell_types (sample_uuid, cell_annotation_details_id, cell_type_count)
+     VALUES (P_sample_uuid, (SELECT id from cell_annotation_details WHERE cell_type_name = P_cell_type_name), P_cell_type_count)
      ON CONFLICT ON CONSTRAINT cell_types_sample_uuid_cell_annotation_details_id_key DO UPDATE
      SET cell_type_count = EXCLUDED.cell_type_count + P_cell_type_count;
 END
@@ -137,19 +137,19 @@ $$;
 --
 -- TEST DATA
 
-DROP TABLE IF EXISTS "public"."geom_test";
-CREATE TABLE IF NOT EXISTS "public"."geom_test" (
+DROP TABLE IF EXISTS geom_test;
+CREATE TABLE IF NOT EXISTS geom_test (
     "id" SERIAL PRIMARY KEY
 );
-ALTER TABLE "public"."geom_test" ADD COLUMN IF NOT EXISTS geom geometry(MULTIPOLYGONZ,0);
-ALTER TABLE "public"."geom_test" ALTER COLUMN geom SET NOT NULL;
-CREATE INDEX IF NOT EXISTS "geom_test_index" ON "public"."geom_test" USING GIST(geom);
+ALTER TABLE geom_test ADD COLUMN IF NOT EXISTS geom geometry(POLYHEDRALSURFACEZ,0);
+ALTER TABLE geom_test ALTER COLUMN geom SET NOT NULL;
+CREATE INDEX IF NOT EXISTS "geom_test_index" ON geom_test USING GIST(geom);
 -- ST_IsValid only works for 2D objects
 -- https://trac.osgeo.org/postgis/ticket/4364
--- ALTER TABLE "public"."geom_test" ADD CONSTRAINT "geom_valid_check" CHECK (ST_IsValid(geom));
+-- ALTER TABLE geom_test ADD CONSTRAINT "geom_valid_check" CHECK (ST_IsValid(geom));
 -- Use ST_Force3D instead of ST_Force_2d which was deprecated in 2.1.0.
 -- This just "tacks on" the Z if not specified, which is not what is wanted here.
--- ALTER TABLE "public"."geom_test" ALTER COLUMN geom TYPE geometry(MULTIPOLYGONZ) USING ST_Force3D(geom);
+-- ALTER TABLE geom_test ALTER COLUMN geom TYPE geometry(MULTIPOLYGONZ) USING ST_Force3D(geom);
 
 -- Load Test Data
 -- This data must be seeded for the script 'run_test.sql' to be able to run.
@@ -162,34 +162,37 @@ CREATE INDEX IF NOT EXISTS "geom_test_index" ON "public"."geom_test" USING GIST(
 -- https://postgis.net/docs/ST_Translate.html
 -- https://postgis.net/docs/ST_GeomFromText.html
 -- Create the cube (10x10x10) at the origin POINT(0,0,0) and then translate it....
-INSERT INTO "public"."geom_test" (geom)
-  VALUES (ST_Translate(ST_GeomFromText('MULTIPOLYGON Z(
-        ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, -5 -5 5, 5 -5 5, 5 -5 -5, -5 -5 -5)),
-        ((-5 5 -5, -5 5 5, 5 5 5, 5 5 -5, -5 5 -5)),
-        ((-5 -5 5, -5 5 5, 5 5 5, -5 5 5, -5 -5 5)),
-        ((5 -5 -5, 5 -5 5, 5 5 5, 5 5 -5, 5 -5 -5)) )'),
+
+-- https://gis.stackexchange.com/questions/214572/st-makesolid-creating-an-invalid-solid-from-closed-polyhedralsurfacez
+-- The front and the back of a face are determined by whether the points turn clock or counter-clockwise.
+INSERT INTO geom_test (geom)
+  VALUES (ST_Translate(ST_MakeSolid('POLYHEDRALSURFACE Z(
+        ((-5.0 -5.0 5.0, 5.0 -5.0 5.0, 5.0 5.0 5.0, -5.0 5.0 5.0, -5.0 -5.0 5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 5.0 -5.0, 5.0 5.0 -5.0, 5.0 -5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 -5.0 5.0, -5.0 5.0 5.0, -5.0 5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((5.0 -5.0 -5.0, 5.0 5.0 -5.0, 5.0 5.0 5.0, 5.0 -5.0 5.0, 5.0 -5.0 -5.0)),
+        ((-5.0 5.0 -5.0, -5.0 5.0 5.0, 5.0 5.0 5.0, 5.0 5.0 -5.0, -5.0 5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, 5.0 -5.0 -5.0, 5.0 -5.0 5.0, -5.0 -5.0 5.0, -5.0 -5.0 -5.0)) )'),
          15, 15, 15));
 
-INSERT INTO "public"."geom_test" (geom)
-  VALUES (ST_Translate(ST_GeomFromText('MULTIPOLYGON Z(
-        ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, -5 -5 5, 5 -5 5, 5 -5 -5, -5 -5 -5)),
-        ((-5 5 -5, -5 5 5, 5 5 5, 5 5 -5, -5 5 -5)),
-        ((-5 -5 5, -5 5 5, 5 5 5, -5 5 5, -5 -5 5)),
-        ((5 -5 -5, 5 -5 5, 5 5 5, 5 5 -5, 5 -5 -5)) )'),
+INSERT INTO geom_test (geom)
+  VALUES (ST_Translate(ST_MakeSolid('POLYHEDRALSURFACE Z(
+        ((-5.0 -5.0 5.0, 5.0 -5.0 5.0, 5.0 5.0 5.0, -5.0 5.0 5.0, -5.0 -5.0 5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 5.0 -5.0, 5.0 5.0 -5.0, 5.0 -5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 -5.0 5.0, -5.0 5.0 5.0, -5.0 5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((5.0 -5.0 -5.0, 5.0 5.0 -5.0, 5.0 5.0 5.0, 5.0 -5.0 5.0, 5.0 -5.0 -5.0)),
+        ((-5.0 5.0 -5.0, -5.0 5.0 5.0, 5.0 5.0 5.0, 5.0 5.0 -5.0, -5.0 5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, 5.0 -5.0 -5.0, 5.0 -5.0 5.0, -5.0 -5.0 5.0, -5.0 -5.0 -5.0)) )'),
          115, 15, 15));
 
-INSERT INTO "public"."geom_test" (geom)
-  VALUES (ST_Translate(ST_GeomFromText('MULTIPOLYGON Z(
-        ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, -5 -5 5, 5 -5 5, 5 -5 -5, -5 -5 -5)),
-        ((-5 5 -5, -5 5 5, 5 5 5, 5 5 -5, -5 5 -5)),
-        ((-5 -5 5, -5 5 5, 5 5 5, -5 5 5, -5 -5 5)),
-        ((5 -5 -5, 5 -5 5, 5 5 5, 5 5 -5, 5 -5 -5)) )'),
+INSERT INTO geom_test (geom)
+  VALUES (ST_Translate(ST_MakeSolid('POLYHEDRALSURFACE Z(
+        ((-5.0 -5.0 5.0, 5.0 -5.0 5.0, 5.0 5.0 5.0, -5.0 5.0 5.0, -5.0 -5.0 5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 5.0 -5.0, 5.0 5.0 -5.0, 5.0 -5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 -5.0 5.0, -5.0 5.0 5.0, -5.0 5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((5.0 -5.0 -5.0, 5.0 5.0 -5.0, 5.0 5.0 5.0, 5.0 -5.0 5.0, 5.0 -5.0 -5.0)),
+        ((-5.0 5.0 -5.0, -5.0 5.0 5.0, 5.0 5.0 5.0, 5.0 5.0 -5.0, -5.0 5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, 5.0 -5.0 -5.0, 5.0 -5.0 5.0, -5.0 -5.0 5.0, -5.0 -5.0 -5.0)) )'),
          15, 215, 15));
 
 -- https://postgis.net/docs/ST_RotateX.html
@@ -197,12 +200,14 @@ INSERT INTO "public"."geom_test" (geom)
 -- https://postgis.net/docs/ST_RotateZ.html
 -- Since it's being rotated through 2*PI on all axis, it should be the same orientation as if it were never rotated.
 -- NOTE: Modulus the round-off error.
-INSERT INTO "public"."geom_test" (geom)
-  VALUES (ST_Translate(ST_Scale(ST_RotateZ(ST_RotateY(ST_RotateX(ST_GeomFromText('MULTIPOLYGON Z(
-        ((-5 -5 -5, -5 -5 5, -5 5 5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, 5 -5 -5, 5 5 -5, -5 5 -5, -5 -5 -5)),
-        ((-5 -5 -5, -5 -5 5, 5 -5 5, 5 -5 -5, -5 -5 -5)),
-        ((-5 5 -5, -5 5 5, 5 5 5, 5 5 -5, -5 5 -5)),
-        ((-5 -5 5, -5 5 5, 5 5 5, -5 5 5, -5 -5 5)),
-        ((5 -5 -5, 5 -5 5, 5 5 5, 5 5 -5, 5 -5 -5)) )'),
-         pi()*2), pi()*2), pi()*2), 0.5, 0.5, 0.5), 7.5, 307.5, 7.5));
+INSERT INTO geom_test (geom)
+  VALUES (ST_Translate(ST_Scale(ST_RotateZ(ST_RotateY(ST_RotateX(ST_MakeSolid('POLYHEDRALSURFACE Z(
+        ((-5.0 -5.0 5.0, 5.0 -5.0 5.0, 5.0 5.0 5.0, -5.0 5.0 5.0, -5.0 -5.0 5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 5.0 -5.0, 5.0 5.0 -5.0, 5.0 -5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, -5.0 -5.0 5.0, -5.0 5.0 5.0, -5.0 5.0 -5.0, -5.0 -5.0 -5.0)),
+        ((5.0 -5.0 -5.0, 5.0 5.0 -5.0, 5.0 5.0 5.0, 5.0 -5.0 5.0, 5.0 -5.0 -5.0)),
+        ((-5.0 5.0 -5.0, -5.0 5.0 5.0, 5.0 5.0 5.0, 5.0 5.0 -5.0, -5.0 5.0 -5.0)),
+        ((-5.0 -5.0 -5.0, 5.0 -5.0 -5.0, 5.0 -5.0 5.0, -5.0 -5.0 5.0, -5.0 -5.0 -5.0)) )'),
+         pi()*2), pi()*2), pi()*2),
+          0.5, 0.5, 0.5),
+           7.5, 307.5, 7.5));

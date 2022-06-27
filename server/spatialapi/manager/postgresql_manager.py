@@ -156,9 +156,9 @@ class PostgresqlManager(object):
     def dump_anotation_detail_of_cell_type_name(self, cell_type_name: str) -> List:
         sql: str =\
             "SELECT cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id, array_agg(cm.marker) AS markers " \
-            " FROM public.cell_annotation_details AS cad" \
-            " JOIN public.cell_annotation_details_marker AS cadm ON cadm.cell_annotation_details_id = cad.id" \
-            " LEFT JOIN public.cell_marker AS cm ON cadm.cell_marker_id = cm.id" \
+            " FROM cell_annotation_details AS cad" \
+            " JOIN cell_annotation_details_marker AS cadm ON cadm.cell_annotation_details_id = cad.id" \
+            " LEFT JOIN cell_marker AS cm ON cadm.cell_marker_id = cm.id" \
             " WHERE cad.cell_type_name = %(cell_type_name)s" \
             " GROUP BY cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id"
         try:
@@ -194,6 +194,7 @@ class PostgresqlManager(object):
         return data
 
     def select_all(self, query: str, vars=None) -> list:
+        all: list = None
         try:
             cursor = self.conn.cursor()
             cursor.execute(query, vars)

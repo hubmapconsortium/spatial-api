@@ -38,7 +38,7 @@ class TissueSampleCellTypeManager(object):
         self.ssh.close()
 
     # Login through the UI (https://portal.hubmapconsortium.org/) to get the credentials...
-    # In Firefox (Tools > Browser Tools > Web Developer Tools).
+    # In Firefox open 'Tools > Browser Tools > Web Developer Tools'.
     # Click on "Storage" then the dropdown for "Local Storage" and then the url,
     # Applications use the "nexus_token" from the returned information.
     # UI times-out in 15 min so close the browser window, and the token will last for a day or so.
@@ -104,12 +104,31 @@ if __name__ == '__main__':
 
     # https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(
-        description='Tissue Sample Cell Type Manager',
+        description='''Tissue Sample Cell Type Manager
+        
+Steps:
+1) Build the data.json file you will need to run 'tissue_sample_cell_type_manager.py --build_json_token BEARER_TOKEN'
+ See the note below for a description of how to get the BEARER_TOKEN
+2) To process the data.json file converting it to a data_out.json file; log into the PSC server, and run the following:
+$ ssh kollar@hive.psc.edu
+$ ssh kollar@hivevm191.psc.edu
+$ cd ~/bin/psc
+$ ./mkvenv.sh
+$ source venv/bin/activate
+$ ./test.py
+3) To process the data_out.json file you will need to run 'tissue_sample_cell_type_manager.py --process_json'
+
+NOTE: To retrieve the token for the build_json_token:
+In Firefox open 'Tools > Browser Tools > Web Developer Tools'.
+Login through the UI(https://portal.hubmapconsortium.org/).
+In the Web Developer Tools, click on 'Network', and then one of the search endpoints.
+Copy the 'Request Header', 'Authoriation : Bearer' token.
+''',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
-                        help='config file to use')
-    parser.add_argument("-b", '--build_json', action="store_true",
-                        help='build the .json file that is processed at the psc')
+                        help='config file to use for processing')
+    parser.add_argument("-b", '--build_json_token', type=str,
+                        help='build the .json file that is processed at the psc, the value is a bearer token to use for ingest_api endpoint call')
     parser.add_argument("-p", '--process_json', action="store_true",
                         help='process the .json file created at the psc')
     parser.add_argument("-r", "--run_psc", action="store_true",
@@ -125,22 +144,27 @@ if __name__ == '__main__':
     local_working_dir: str = '../scripts/psc'
 
     try:
-        if args.build_json:
+        if args.build_json_token is not None:
             logger.info(f'** Building data.json and sending it to {psc_working_dir}...')
 
-            token = 'Agm9bW6Brq7gGlX6gz2omp7WzdaxzzEn9yz8n3Vw9qXW1nznndF8CwGaBNqEBlyBawx957nEa5oYB7U6382eatm2aQ'
-            manager.dump_cell_types_data(token, '../scripts/psc/data.json')
+            manager.dump_cell_types_data(args.build_json_token, '../scripts/psc/data.json')
 
             ssh = Ssh(config)
 
             ssh.send_shell(f'mkdir -f {psc_working_dir}')
-            ssh.scp_put('../scripts/psc/mkenv.sh', psc_working_dir)
+            ssh.scp_put('../scripts/psc/mkvenv.sh', psc_working_dir)
             ssh.scp_put('../scripts/psc/requirements.txt', psc_working_dir)
             ssh.scp_put('../scripts/psc/test.py', psc_working_dir)
             ssh.scp_put('../scripts/psc/data.json', psc_working_dir)
 
         elif args.run_psc:
             logger.info(f'** Building data.json on psc server...')
+
+            # $ ssh kollar@hive.psc.edu
+            # $ ssh kollar@hivevm191.psc.edu
+            # $ cd ~/bin/psc
+            # $ ./mkvenv.sh
+            #
 
             # ssh.send_shell('cd ~/bin')
             # ssh.send_shell('rm -rf ./psc')
