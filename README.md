@@ -1,4 +1,4 @@
-# spatial-api
+# HuBMAP Spatial API
 
 This information will help you get the Spatian API up in running whether locally or on an environment.
 
@@ -40,9 +40,9 @@ $ sudo /bin/su - centos
 $ cd hubmap/spatial-api
 $ pwd
 /home/centos/hubmap/spatial-api
-$ git checkout master
+$ git checkout main
 $ git status
-# On branch master
+# On branch main
 ...
 $ git pull
 ```
@@ -51,7 +51,7 @@ For production the deployment machine is `ingest.hubmapconsortium.org`.
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.hubmapconsortium.org
 ...
 ```
-You should now have the most recent version of the code which should be in the `master` branch.
+You should now have the most recent version of the code which should be in the `main` branch.
 You can also deploy other branches on DEV for testing.
 
 ### Build Docker Image
@@ -60,10 +60,10 @@ In building the latest image specify the latest tag:
 $ docker build -t hubmap/spatial-api:latest .
 ````
 
-In building a release version of the image, use the `master` branch, and specify a version tag.
+In building a release version of the image, use the `main` branch, and specify a version tag (without prefix `v`).
 You can see the previous version tags at [DockerHub Spatial APi](https://github.com/hubmapconsortium/spatial-api/releases/).
 ````bash
-$ docker build -t hubmap/spatial-api:1.0.2 .
+$ docker build -t hubmap/spatial-api:1.0.0 .
 ````
 
 ### Publish the Image to DockerHub
@@ -81,13 +81,13 @@ $ docker push hubmap/spatial-api:latest
 
 For PROD, push the released version/tag that you have built above.
 ````bash
-$ docker push hubmap/spatial-api:v1.0.2
+$ docker push hubmap/spatial-api:1.0.0
 ````
 
 ### PROD Documenting the Docker image
 
 Reelase workflow:
-- merge code to the release branch (typically 'master') in github
+- merge code to the release branch (typically 'main') in github
 - bump the version number in ./VERSION
 - create a new github release and tag
 - publish a new image with new tag to DockerHub
@@ -98,16 +98,16 @@ Reelase workflow:
 The version found in the Released Version that you will create below must
 match that of the ./VERSION file.
 Change this file before building the Docker image that you will push to Docker HUB.
-The version will show up on [VERSION](https://github.com/hubmapconsortium/spatial-api/blob/master/VERSION).
+The version will show up on [VERSION](https://github.com/hubmapconsortium/spatial-api/blob/main/VERSION).
 
 
-#### Create a new GitHUB Release Tag
+#### Create a new Github Release Tag
 
 For PROD, after you've created the numbered release you should save it in
 the project [Release](https://github.com/hubmapconsortium/spatial-api/releases/) page.
 On this page, click on the `Draft a new release` (white on black) button, or if there are no releases
 click on the `Create a new release` (white on green) button.
-Click on the `Choose a tag` button, enter the tag name, and then `+ Create new tag: v.?.?.? on publish`.
+Click on the `Choose a tag` button, enter the tag name, and then `+ Create new tag: v.?.?.? on publish` (with prefix `v`).
 The new tag will appear in place of the text on the `Choose a tag` button.
 Create a new release version in the `Release title` box.
 Use the same release number as was used in DockerHub, but prefix it with the letter v (see `Tag suggestion` on the left),
@@ -119,37 +119,38 @@ For PROD, download the new numbered release image from DockerHub to the deployme
 directory. If you build the image on the deployment server you can skip this step as it should already be on the server.
 You can use `docker images` to confirm this.
 ````bash
-$ docker pull hubmap/spatial-api:1.0.2
+$ docker pull hubmap/spatial-api:1.0.0
 ````
-For DEV, you can use `latest` take rather than the `1.0.2` tag above.
+
+For DEV, you can use `latest` take rather than the `1.0.0` tag above.
 
 Determine the current image version. This will show you which Docker image the process is running under.
 If the process has stopped for some reason you should try `docker images`.
 ````bash
 $ docker ps
 CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS                  PORTS                          NAMES
-407cbcc4d15d        hubmap/spatial-api:1.0.1    "/usr/local/bin/entr…"   3 weeks ago         Up 3 weeks (healthy)    0.0.0.0:5000->5000/tcp         spatial-api
+407cbcc4d15d        hubmap/spatial-api:1.0.0    "/usr/local/bin/entr…"   3 weeks ago         Up 3 weeks (healthy)    0.0.0.0:5000->5000/tcp         spatial-api
 ...
 ````
 Stop the process associated with container (Docker image) and delete it.
 ````bash
-$ export SPATIAL_API_VERSION=1.0.1; docker-compose -f docker-compose.deployment.yml down --rmi all
+$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.deployment.yml down --rmi all
 ````
 Start the new container using the image just pulled from DockerHub.
 ````bash
-$ export SPATIAL_API_VERSION=1.0.2; docker-compose -f docker-compose.deployment.yml up -d --no-build
+$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.deployment.yml up -d --no-build
 ````
 
 Make sure that the new images has started.
 ````bash
 $ docker ps
 CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS                            PORTS                       NAMES
-5c0bdb68bd22        hubmap/spatial-api:1.0.2    "/usr/local/bin/entr…"   6 seconds ago       Up 4 seconds (health: starting)   0.0.0.0:5000->5000/tcp      spatial-api
+5c0bdb68bd22        hubmap/spatial-api:1.0.0    "/usr/local/bin/entr…"   6 seconds ago       Up 4 seconds (health: starting)   0.0.0.0:5000->5000/tcp      spatial-api
 ````
 
 The production version of the server should be running at...
 ````bash
-https://spatial.hubmapconsortium.org/
+https://spatial.api.hubmapconsortium.org/
 ````
 
 ### Examine Server Logs
@@ -196,27 +197,6 @@ The specification .yml file should be found at the top lever of the project, and
 
 All of the HubMAP APIs are found [here](https://smart-api.info/registry?q=hubmap).
 They are reloaded from the `master` branch specification .yml file sometime after midnight Eastern Time US.
-
-## hubmapconsortium/gateway
-
-It is important to remember to add each new endpoint to the PROD [hubmapconsortium/gateway branch test-release PROD](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.prod.json)
-and DEV [hubmapconsortium/gateway branch test-release DEV](https://github.com/hubmapconsortium/gateway/blob/test-release/api_endpoints.dev.json)
-files under the section for the micro-service (e.g., `spatial-api.dev.hubmapconsortium.org`).
-```bash
-$ git clone  git@github.com:hubmapconsortium/gateway.git
-$ git checkout test-release
-```
-
-Add the endpoint to the section `spatial-api.dev.hubmapconsortium.org` section:
-```json
-  "spatial-api.dev.hubmapconsortium.org": [
-    {
-      "method": "GET",
-      "endpoint": "/codes/<*>/codes",
-      "auth": false
-    },
-```
-
 
 ## Method Verification Data
 

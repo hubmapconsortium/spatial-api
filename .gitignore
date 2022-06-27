@@ -2,7 +2,7 @@
 .idea
 venv/
 **/__pycache__/
-server/log
+*.log
 server/resources/app.properties
 server/resources/app.local.properties
 scripts/psc/*.json

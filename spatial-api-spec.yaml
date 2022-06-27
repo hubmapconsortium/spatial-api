@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  description: 'The HuBMAP Spatial API is a standard RESTful web service with create operations.<br><br>'
+  description: 'The HuBMAP Spatial API is a standard RESTful web service with create operations.'
   version: 1.0.0
   title: HuBMAP Spatial API
   contact:
@@ -8,11 +8,10 @@ info:
     email: api-developers@hubmapconsortium.org
   license:
     name: MIT License
-    url: 'https://github.com/hubmapconsortium/antibody-api/blob/master/license.txt'
+    url: 'https://github.com/hubmapconsortium/spatial-api/blob/main/license.txt'
 servers:
   - url: 'https://spatial.api.hubmapconsortium.org'
-security:
-  - bearerAuth: []
+
 paths:
   '/search/hubmap_id/{hubmap_id}/radius/{radius}/target/{target}':
     get:
@@ -92,10 +91,6 @@ paths:
         '404':
           description: No HubMAP IDs were found
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
   schemas:
     HubMAPIds:
       type: object

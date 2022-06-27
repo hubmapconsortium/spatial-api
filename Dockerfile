@@ -9,13 +9,13 @@ RUN python3 -m pip install --upgrade pip
 
 WORKDIR /app
 COPY requirements.txt .
-COPY server/resources/app.properties resources
+
 RUN pip install -r requirements.txt
 
 WORKDIR /app/server
 COPY server/spatialapi spatialapi
 #ENV PYTHONPATH="${PYTHONPATH}:/app/server"
-COPY server/log log
+
 COPY server/uwsgi.ini .
 COPY server/wsgi.py .
 

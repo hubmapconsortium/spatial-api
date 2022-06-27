@@ -236,7 +236,7 @@ class SpatialManager(object):
         })
         #logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:
-            abort(json_error(f'The attributes hibmap_id: {sample_hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
+            abort(json_error(f'The attributes hubmap_id: {sample_hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
         if len(recs) != 1:
             logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
         #logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
