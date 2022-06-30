@@ -45,6 +45,7 @@ class Geom(object):
         sample_rui_location: dict = \
             self.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, relative_spatial_entry_iri)
         self.p: Point3D = self.centroid_from_sample_rui_location(sample_rui_location)
+        logger.info(f'Centroid of sample_rui_location ({sample_rui_location}): {self.p}')
 
         self.distances: List[dict] = self.build_distance_for_all_hubmap_ids(relative_spatial_entry_iri)
 
@@ -129,6 +130,68 @@ class Geom(object):
                 hubmap_ids.append(d['sample_hubmap_id'])
         return hubmap_ids
 
+    def geom_check(self) -> None:
+        logger.info(f'Determine if ALL geometries are: closed, solids, and have the correct volume...')
+        # NOTE: ST_IsValid(sample_geom) does not support POLYHEDRALSURFACE.
+        sql: str = f'SELECT' \
+                   f' sample_hubmap_id, sample_rui_location, ST_IsClosed(sample_geom),' \
+                   f' ST_Volume(sample_geom), ST_3DArea(sample_geom), ST_IsSolid(sample_geom)' \
+                   f' FROM {manager.table};'
+        results: list = self.postgresql_manager.select_all(sql)
+        logger.info(f'Checking {len(results)} geometries!')
+        for result in results:
+            sample_hubmap_id: str = result[0]
+            sample_rui_location: dict = json.loads(result[1])
+            placement: dict = sample_rui_location['placement']
+            sample_rui_location_volume: float = \
+                sample_rui_location["x_dimension"] * placement['x_scaling'] \
+                * sample_rui_location["y_dimension"] * placement['y_scaling'] \
+                * sample_rui_location["z_dimension"] * placement['z_scaling']
+            sample_rui_location_volume = round(sample_rui_location_volume, 0)
+            is_closed: str = result[2]
+            # ST_Volume — Computes the volume of a 3D solid. If applied to surface (even closed) geometries will return 0.
+            st_volume: float = round(float(result[3]), 0)
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            st_3darea: float = result[4]
+            if is_closed is not True:
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id} IS NOT CLOSED!')
+            if sample_rui_location_volume != st_volume:
+                logger.error(
+                    f'sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
+            # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            if st_3darea != 0:
+                logger.error(f'The sample_geom for sample_hubmap_id: ST_3DArea should return 0 for solids!')
+
+    def distance_check(self, relative_spatial_entry_iri: str, radius: float) -> None:
+        # NOTE: Things seem to break between -r 99-167
+        logger.info(f">>> Called with; sample_hubmap_id: {self.sample_hubmap_id};"
+                    f" relative_spatial_entry_iri: {relative_spatial_entry_iri};"
+                    f" radius {radius}")
+
+        should_find_sample_hubmap_ids: List[str] = \
+            self.hubmap_ids_within_radius_of_centroid(radius)
+
+        found_sample_hubmap_ids: List[str] = \
+            self.spatial_manager.find_relative_to_spatial_entry_iri_within_radius_from_point(
+                relative_spatial_entry_iri, radius, self.p.x, self.p.y, self.p.z)
+        logger.info(
+            f">>> Should find {len(should_find_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(should_find_sample_hubmap_ids)}")
+        logger.info(
+            f">>> Fond in search {len(found_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(found_sample_hubmap_ids)}")
+        not_in_both = set(should_find_sample_hubmap_ids) ^ set(found_sample_hubmap_ids)
+        logger.info(f">>> Not in both {len(not_in_both)} sample_hubmap_ids: {', '.join(not_in_both)}")
+
+        for sample_hubmap_id in not_in_both:
+            sample_rui_location: dict = \
+                self.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, relative_spatial_entry_iri)
+            distance: float = self.distance_from_sample_rui_location(sample_rui_location)
+            distances: List[float] = self.closest_point_distance(sample_hubmap_id)
+            logger.info(f"Distances to sample_hubmap_id: {sample_hubmap_id}: {distances}")
+            # import pdb; pdb.set_trace();
+            logger.info(
+                f"sample_hubmap_id: {sample_hubmap_id} computed distance: {distance} x: {sample_rui_location['x_dimension']} y: {sample_rui_location['y_dimension']} z: {sample_rui_location['z_dimension']}")
+
 
 # (cd server; export PYTHONPATH=.; python3 ./tests/geom.py -h)
 if __name__ == '__main__':
@@ -152,6 +215,8 @@ all hubmap_ids within the given --radius.
 
 Finally, compare the lists returned. ''',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
+                        help='config file to use for processing')
     parser.add_argument('-i', '--sample_hubmap_id', type=str, default='HBM795.TSPP.994',
                         help='usd the centroid of this hubmap_id as the point to search from')
     parser.add_argument("-s", "--relative_spatial_entry_iri", type=str, default='VHMale',
@@ -159,73 +224,18 @@ Finally, compare the lists returned. ''',
     parser.add_argument('-r', '--radius', type=float, default=100.0,
                         help='radius to search within the centroid of the hubmap_id given')
     parser.add_argument("-c", '--geom_check', action="store_true",
-                        help='Determine if ALL geometries are: closed, solids, and have the correct volume...')
+                        help='ONLY Determine if ALL geometries are: closed, solids, and have the correct volume...')
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
-    config.read('resources/app.local.properties')
+    config.read(args.config)
     manager = Geom(config, args.sample_hubmap_id, args.relative_spatial_entry_iri)
 
-    if args.geom_check:
-        logger.info(f'Determine if ALL geometries are: closed, solids, and have the correct volume...')
-        # NOTE: ST_IsValid(sample_geom) does not support POLYHEDRALSURFACE.
-        sql: str = f'SELECT' \
-                   f' sample_hubmap_id, sample_rui_location, ST_IsClosed(sample_geom),' \
-                   f' ST_Volume(sample_geom), ST_3DArea(sample_geom), ST_IsSolid(sample_geom)' \
-                   f' FROM {manager.table};'
-        results: list = manager.postgresql_manager.select_all(sql)
-        logger.info(f'Checking {len(results)} geometries!')
-        for result in results:
-            sample_hubmap_id: str = result[0]
-            sample_rui_location: dict = json.loads(result[1])
-            placement: dict = sample_rui_location['placement']
-            sample_rui_location_volume: float = \
-                sample_rui_location["x_dimension"] * placement['x_scaling'] \
-                * sample_rui_location["y_dimension"] * placement['y_scaling'] \
-                * sample_rui_location["z_dimension"] * placement['z_scaling']
-            sample_rui_location_volume = round(sample_rui_location_volume, 0)
-            is_closed: str = result[2]
-            # ST_Volume — Computes the volume of a 3D solid. If applied to surface (even closed) geometries will return 0.
-            st_volume: float = round(float(result[3]), 0)
-            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
-            st_3darea: float = result[4]
-            if sample_rui_location_volume != st_volume:
-                logger.error(f'sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
-            if is_closed is not True:
-                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id} IS NOT CLOSED!')
-            # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
-            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
-            if st_3darea != 0:
-                logger.error(f'The sample_geom for sample_hubmap_id: ST_3DArea should return 0 for solids!')
-            # import pdb; pdb.set_trace();
+    try:
+        if args.geom_check:
+            manager.geom_check()
+        else:
+            manager.distance_check(args.relative_spatial_entry_iri, args.radius)
+    finally:
+        manager.close()
         logger.info('Done!')
-        exit()
-
-    should_find_sample_hubmap_ids: List[str] =\
-        manager.hubmap_ids_within_radius_of_centroid(args.radius)
-
-    found_sample_hubmap_ids: List[str] =\
-        manager.spatial_manager.find_relative_to_spatial_entry_iri_within_radius_from_point(
-            args.relative_spatial_entry_iri, args.radius, manager.p.x, manager.p.y, manager.p.z)
-
-    # NOTE: Things seem to break between -r 99-167
-    logger.info(f">>> Called with; sample_hubmap_id: {args.sample_hubmap_id};"
-                f" relative_spatial_entry_iri: {args.relative_spatial_entry_iri};"
-                f" radius {args.radius}")
-    logger.info(f">>> Should find {len(should_find_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(should_find_sample_hubmap_ids)}")
-    logger.info(f">>> Fond in search {len(found_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(found_sample_hubmap_ids)}")
-    not_in_both = set(should_find_sample_hubmap_ids) ^ set(found_sample_hubmap_ids)
-    logger.info(f">>> Not in both {len(not_in_both)} sample_hubmap_ids: {', '.join(not_in_both)}")
-
-    for sample_hubmap_id in not_in_both:
-        sample_rui_location: dict = \
-            manager.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, args.relative_spatial_entry_iri)
-        distance: float = manager.distance_from_sample_rui_location(sample_rui_location)
-        distances: List[float] = manager.closest_point_distance(sample_hubmap_id)
-        logger.info(f"Distances to sample_hubmap_id: {sample_hubmap_id}: {distances}")
-        #import pdb; pdb.set_trace();
-        logger.info(f"sample_hubmap_id: {sample_hubmap_id} computed distance: {distance} x: {sample_rui_location['x_dimension']} y: {sample_rui_location['y_dimension']} z: {sample_rui_location['z_dimension']}")
-
-    logger.info("Done!")
-
-    manager.close()

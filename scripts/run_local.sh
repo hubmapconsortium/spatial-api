@@ -96,6 +96,7 @@ if [ $TESTS ]; then
   echo
   echo ">>> Run the Tests after bringing up the containers..."
   echo
+  (cd server; export PYTHONPATH=.; python3 ./tests/geom.py -c)
   ./scripts/search_hubmap_id.sh
   ./scripts/spatial_search_hubmap_id.sh
   ./scripts/spatial_search_point.sh

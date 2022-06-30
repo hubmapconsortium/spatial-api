@@ -29,9 +29,9 @@ SELECT id FROM geom_test
 
 -- Only works for 2D :-(
 -- SELECT ST_AsText(ST_centroid(geom)) FROM geom_test;
-
+--
 -- For Polyhedral Surfaces, reports if the surface is areal (open) or volumetric (closed).
--- This function supports 3d and will not drop the z-index
+-- This function supports 3d and will not drop the z-index.
 -- This function supports Polyhedral surfaces.
 -- All should return 't'!
 SELECT ST_IsClosed(geom) FROM geom_test;
