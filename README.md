@@ -216,7 +216,7 @@ They are reloaded from the `master` branch specification .yml file sometime afte
 It was important to verify that the manner in which we are loading spatial data into the `sample` table produces
 the results that we were expecting.
 In order to do this "well behaved" data was constructed in the `geom_test` table.
-Several 5x5x5 cubes were created and spaced at different intervals by a `Translate`.
+Several 10x10x10 cubes were created and spaced at different intervals by a `Translate` operation.
 The `db/run_test.sql` file contains a comment which represents the distance between the origin `POINTZ(0 0 0)`
 and a radius (computed using the Pythagorean theorem). A pair of queries are used for each cube.
 The first query uses a radius which is just a tiny bit shy of the radius that the cube should be found.
@@ -260,12 +260,8 @@ INSERT INTO geom_test (geom)
         ((-5.0 -5.0 -5.0, 5.0 -5.0 -5.0, 5.0 -5.0 5.0, -5.0 -5.0 5.0, -5.0 -5.0 -5.0)) )'),
          15, 15, 15));
 ```
-This is a cube of size `10x10x10` created at the default origin `POINTZ(0 0 0)`, and translated 15 in the X, Y, and Z direction.
-This would place the closest point of the cube on any axis with the origin of `POINTZ(0 0 0)` at a radius of `15-5=10`.
-Where `15` represents the location of the centroid (from the Translate),
-and `-5=-10/2` the closest point of a `10x10x10` cube located at that centroid.
 
-The cube is constructed as a Polyhedral Surface which is a 3D figure made exclusively of six (6) Polygons.
+This cube is constructed as a Polyhedral Surface which is a 3D figure made exclusively of six (6) Polygons.
 It is a contiguous collection of polygons, which share common boundary segments.
 In our case the surfaces of the polygons are all `outside` surfaces.
 An `outside` surface is a polygon that has a `winding order` of counterclockwise,
@@ -292,8 +288,7 @@ You can then use `translation` and `rotation` to further place it in the space.
 
 ## Deploy Database
 
-Connect to the database host, destroy the database and rebuild the table structure and stored procedures...
-
+The following will allow you to connect to the database host, destroy the database and rebuild the table structure and stored procedures...
 ````bash
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@18.205.215.12
 $ sudo /bin/su - centos
@@ -307,22 +302,21 @@ CONTAINER ID   IMAGE                     COMMAND                  CREATED       
 aa0b6676c615   spatial-api_spatial_db    "docker-entrypoint.s…"   28 seconds ago   Up 28 seconds    0.0.0.0:5432->5432/tcp, :::5432->5432/tcp    spatial_db
 ````
 
-Load data into the database. This will actually run several scripts.
+The following script will allow you to load data into the database. This will actually run several scripts.
 ````bash
 $ ./scripts/create_dev_db.sh
 ````
 
-This presupposes that you have processed the json file on the PSC.
-This will build the `data.json` file, copy it to the PSC along with an
+Before running the above script you will need to have processed the `data.json` file at the PSC.
+
+The following will allow you to build the `data.json` file, copy it to the PSC along with an
 environment that is used to process the PSC files mentioned in the `data.json`.
 ````bash
 $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py -b BEARER_TOKEN -C $CONFIG)
 ````
 
 Next you need to connect to the PSC host and process the `data.json` file.
-This build step will create a `data_out.json` file that will be
-coppied over when the `tissue_sample_cell_type_manager.py` script
-is called with `-p` above in the `create_dev_db.sh` script.
+These steps will create a `data_out.json` file that will be used in the `create_dev_db.sh` file above.
 ````bash
 $ ssh kollar@hive.psc.edu
 $ ssh kollar@hivevm191.psc.edu
