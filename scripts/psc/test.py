@@ -6,6 +6,8 @@ from os.path import exists
 import time
 from datetime import timedelta
 
+
+# https://www.hdfgroup.org/
 def h5ad_file_analysis(data: dict):
     sec_an = anndata.read_h5ad(data['psc_file'])
     if 'predicted.ASCT.celltype' in sec_an.obs:
@@ -25,18 +27,18 @@ def h5ad_file_analysis(data: dict):
         print(f"$$ 'predicted.ASCT.celltype' NOT in sec_an.obs for analysis_file: {data['psc_file']}")
 
 start_time = time.time()
-input_file = open ('data.json')
+input_file = open('data.json')
 data_array = json.load(input_file)
 for data in data_array:
     if 'psc_file' in data:
         analysis_file = data['psc_file']
-        if exists(data['psc_file']):
+        if exists(analysis_file):
             data['psc_file_exists'] = True
-            print(f"Exists: analysis_file: {data['psc_file']}")
+            print(f"Exists: analysis_file: {analysis_file}")
             h5ad_file_analysis(data)
         else:
             data['psc_file_exists'] = False
-            print(f"** Does NOT exist: analysis_file: {data['psc_file']}")
+            print(f"** Does NOT exist: analysis_file: {analysis_file}")
 
 with open('data_out.json', 'w') as f:
     json.dump(data_array, f)

@@ -131,34 +131,51 @@ class SpatialManager(object):
                f" {placement['x_scaling']}, {placement['y_scaling']}, {placement['z_scaling']})," \
                f" {placement['x_translation']}, {placement['y_translation']}, {placement['z_translation']})"
 
-    def create_sql_insert(self, target_iri: str, rec: dict) -> str:
+    def create_sql_upsert(self, target_iri: str, rec: dict) -> str:
+        organ_uuid: str = rec['organ']['uuid']
+        organ_code: str = rec['organ']['code']
+        donor_uuid: str = rec['donor']['uuid']
+        donor_sex: str = rec['donor']['sex']
+        sample_uuid: str = rec['sample']['uuid']
+        sample_hubmap_id: str = rec['sample']['hubmap_id']
+        sample_specimen_type: str = rec['sample']['specimen_type']
+        sample_rui_location: str = json.dumps(rec['sample']['rui_location'])
+        sample_geom: str = self.create_geometry(rec['sample']['rui_location'])
         return f"INSERT INTO {self.table}" \
-               " (organ_uuid, organ_code," \
-               " donor_uuid, donor_sex," \
-               " relative_spatial_entry_iri," \
-               " sample_uuid, sample_hubmap_id, sample_specimen_type," \
-               " sample_rui_location, sample_geom" \
-               ") VALUES (" \
-               f"'{rec['organ']['uuid']}', '{rec['organ']['code']}', " \
-               f"'{rec['donor']['uuid']}', '{rec['donor']['sex']}', " \
-               f"'{target_iri}', " \
-               f"'{rec['sample']['uuid']}', '{rec['sample']['hubmap_id']}', '{rec['sample']['specimen_type']}', " \
-               f"'{json.dumps(rec['sample']['rui_location'])}', {self.create_geometry(rec['sample']['rui_location'])}" \
-               f")" \
-               f" RETURNING id;"
+               " (organ_uuid, organ_code, donor_uuid, donor_sex, relative_spatial_entry_iri, sample_uuid," \
+               " sample_hubmap_id, sample_specimen_type, sample_rui_location, sample_geom)" \
+               " VALUES (" \
+               f"'{organ_uuid}', '{organ_code}', '{donor_uuid}', '{donor_sex}', '{target_iri}', '{sample_uuid}'," \
+               f" '{sample_hubmap_id}', '{sample_specimen_type}', '{sample_rui_location}', {sample_geom}" \
+               ")" \
+               " ON CONFLICT ON CONSTRAINT sample_relative_spatial_entry_sample_uuid_key DO UPDATE SET" \
+               f" organ_uuid = '{organ_uuid}', organ_code = '{organ_code}', donor_uuid = '{donor_uuid}'," \
+               f" donor_sex = '{donor_sex}', sample_hubmap_id = '{sample_hubmap_id}'," \
+               f" sample_specimen_type = '{sample_specimen_type}', sample_rui_location = '{sample_rui_location}'," \
+               f" sample_geom = {sample_geom}" \
+               " RETURNING id;"
 
-    def insert_rec(self, target_iri: str, rec: dict) -> None:
-        sql_insert_statement: str = self.create_sql_insert(target_iri, rec)
+    def upsert_rec(self, target_iri: str, rec: dict) -> None:
+        sql_insert_statement: str = self.create_sql_upsert(target_iri, rec)
         id: int = self.postgresql_manager.insert(sql_insert_statement)
         logger.info(f"Inserting geom record as; id={id}")
+
+    # def upsert_rec(self, target_iri: str, rec: dict) -> None:
+    #     self.postgresql_manager.add_sample(
+    #         rec['organ']['uuid'], rec['organ']['code'], rec['donor']['uuid'], rec['donor']['sex'],
+    #         target_iri, rec['sample']['uuid'], rec['sample']['hubmap_id'], rec['sample']['specimen_type'],
+    #         json.dumps(rec['sample']['rui_location']),
+    #         self.create_geometry(rec['sample']['rui_location'])
+    #     )
+    #     logger.info(f"Inserting sample record")
 
     def insert_rec_with_placement_at_target(self, target: str, rec: dict) -> None:
         placement: dict = \
             self.spatial_placement_manager.placement_relative_to_target(target, rec['sample']['rui_location'])
         rec['sample']['rui_location']['placement'] = placement
-        self.insert_rec(target, rec)
+        self.upsert_rec(target, rec)
 
-    # Patch to fix RUI 0.5 Kidney and Spleen Placements
+    # With patch to fix RUI 0.5 Kidney and Spleen Placements found at:
     # https://github.com/hubmapconsortium/ccf-ui/blob/main/projects/ccf-database/src/lib/hubmap/hubmap-data.ts#L447-L462
     def adjust_placement_target_if_necessary(self, rec) -> dict:
         rui_location: dict = rec['sample']['rui_location']
@@ -188,8 +205,8 @@ class SpatialManager(object):
         logger.info(f"Inserting data for organ: {organ}")
         recs: List[dict] = self.neo4j_manager.query_organ(organ)
         for rec in recs:
-            # TODO: Need only one line per sample, so the geom data should be normalied.
-            self.insert_rec(rec['organ']['code'], rec)
+            # TODO: Need only one line per sample, so the geom data should be normalized.
+            self.upsert_rec(rec['organ']['code'], rec)
             self.insert_rec_relative_to_spatial_entry_iri(rec)
 
 
@@ -241,6 +258,24 @@ class SpatialManager(object):
             logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
         #logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
+
+    def list_to_rec_for_debugging(self, l: list) -> dict:
+        rec: dict = {}
+        rec['id'] = l[0]
+        rec['organ'] = {}
+        rec['organ']['uuid'] = l[1]
+        rec['organ']['code'] = l[2]
+        rec['donor'] = {}
+        rec['donor']['uuid'] = l[3]
+        rec['donor']['sex'] = l[4]
+        rec['relative_spatial_entry_iri'] = l[5]
+        rec['sample'] = {}
+        rec['sample']['uuid'] = l[6]
+        rec['sample']['hubmap_id'] = l[7]
+        rec['sample']['specimen_type'] = l[8]
+        rec['sample']['rui_location'] = json.loads(l[9])
+        rec['sample']['geom'] = l[10]
+        return rec
 
     def find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id(self,
                                                                         relative_spatial_entry_iri: str,
@@ -312,12 +347,30 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--polyhedralsurface', type=str,
                         help='output a closed POLYHEDRALSURFACE from the three x y z dimensions given and exit')
     # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py -p '10 10 10')
+    parser.add_argument("-s", "--sample_modify", action="store_true",
+                        help='modify a sample that is currently in the database')
 
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
     config.read(args.config)
     manager = SpatialManager(config)
+
+    if args.sample_modify is True:
+        sql: str = f"""SELECT * from {manager.table} LIMIT 1;"""
+        recs: List[str] = manager.postgresql_manager.select_all(sql)
+        print(f"rec: {recs[0]}")
+        rec: dict = manager.list_to_rec_for_debugging(recs[0])
+        if rec['donor']['sex'] == 'male':
+            rec['donor']['sex'] = 'female'
+        else:
+            rec['donor']['sex'] = 'male'
+        manager.upsert_rec(rec['relative_spatial_entry_iri'], rec)
+        sql: str = f"""SELECT * from {manager.table} WHERE id = {rec['id']};"""
+        recs: List[str] = manager.postgresql_manager.select_all(sql)
+        print(f"rec: {recs[0]}")
+        #import pdb;pdb.set_trace();
+        exit(0)
 
     if args.polyhedralsurface is not None:
         try:

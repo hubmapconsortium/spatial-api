@@ -149,6 +149,29 @@ class PostgresqlManager(object):
             if cursor is not None:
                 cursor.close()
 
+    # def add_sample(self,
+    #                organ_uuid: str, organ_code: str, donor_uuid: str, donor_sex: str,
+    #                relative_spatial_entry_iri: str, sample_uuid: str, sample_hubmap_id: str,
+    #                sample_specimen_type: str, sample_rui_location: str, sample_geom_text: str):
+    #     try:
+    #         cursor = self.conn.cursor()
+    #         # Since the type of the sample_geom is a geometry we need to create one from the text...
+    #         # cursor.execute(f"SELECT ST_GeomFromText({sample_geom_text});")
+    #         # sample_geom = cursor.fetchone()
+    #         # logger.info(f"sample_geom: {sample_geom}")
+    #         cursor.execute('CALL add_sample_sp(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)',
+    #                        (organ_uuid, organ_code, donor_uuid, donor_sex,
+    #                         relative_spatial_entry_iri, sample_uuid, sample_hubmap_id,
+    #                         sample_specimen_type, sample_rui_location, sample_geom_text)
+    #                        )
+    #         self.conn.commit()
+    #     except (Exception, psycopg2.DatabaseError) as e:
+    #         self.conn.rollback()
+    #         logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
+    #         raise e
+    #     finally:
+    #         if cursor is not None:
+    #             cursor.close()
 
     def get_missing_cell_type_names(self) -> List[str]:
         return self.missing_cell_type_names

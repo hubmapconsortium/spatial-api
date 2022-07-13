@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS sample (
     "sample_uuid" text NOT NULL,
     "sample_hubmap_id" text NOT NULL,
     "sample_specimen_type" text NOT NULL,
-    "sample_rui_location" text NOT NULL
+    "sample_rui_location" text NOT NULL,
+    CONSTRAINT sample_relative_spatial_entry_sample_uuid_key UNIQUE (relative_spatial_entry_iri, sample_uuid)
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
 -- http://www.bostongis.com/postgis_quickguide_1_4.bqg
@@ -133,6 +134,33 @@ BEGIN
      SET cell_type_count = EXCLUDED.cell_type_count + P_cell_type_count;
 END
 $$;
+
+--CREATE OR REPLACE PROCEDURE add_sample_sp (
+--    P_organ_uuid IN VARCHAR,
+--    P_organ_code IN VARCHAR,
+--    P_donor_uuid IN VARCHAR,
+--    P_donor_sex IN VARCHAR,
+--    P_relative_spatial_entry_iri IN VARCHAR,
+--    P_sample_uuid IN VARCHAR,
+--    P_sample_hubmap_id IN VARCHAR,
+--    P_sample_specimen_type IN VARCHAR,
+--    P_sample_rui_location IN VARCHAR,
+--    P_sample_geom IN geometry
+--    )
+--LANGUAGE plpgsql AS
+--$$
+--BEGIN
+--    INSERT INTO sample
+--     (organ_uuid, organ_code, donor_uuid, donor_sex, relative_spatial_entry_iri, sample_uuid,
+--      sample_hubmap_id, sample_specimen_type, sample_rui_location, sample_geom)
+--     VALUES (P_organ_uuid, P_organ_code, P_donor_uuid, P_donor_sex, P_relative_spatial_entry_iri, P_sample_uuid,
+--       P_sample_hubmap_id, P_sample_specimen_type, P_sample_rui_location, P_sample_geom)
+--     ON CONFLICT ON CONSTRAINT sample_relative_spatial_entry_sample_uuid_key DO UPDATE
+--        SET organ_uuid = P_organ_uuid, organ_code = P_organ_code, donor_uuid = P_donor_uuid, donor_sex = P_donor_sex,
+--        sample_hubmap_id = P_sample_hubmap_id, sample_specimen_type = P_sample_specimen_type,
+--        sample_rui_location = P_sample_rui_location, sample_geom = P_sample_geom;
+--END
+--$$;
 
 --
 -- TEST DATA

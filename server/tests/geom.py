@@ -154,14 +154,14 @@ class Geom(object):
             # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
             st_3darea: float = result[4]
             if is_closed is not True:
-                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id} IS NOT CLOSED!')
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; IS NOT CLOSED!')
             if sample_rui_location_volume != st_volume:
                 logger.error(
-                    f'sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
+                    f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
             # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
             # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
             if st_3darea != 0:
-                logger.error(f'The sample_geom for sample_hubmap_id: ST_3DArea should return 0 for solids!')
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; ST_3DArea should return 0 for solids!')
 
     def distance_check(self, relative_spatial_entry_iri: str, radius: float) -> None:
         # NOTE: Things seem to break between -r 99-167
