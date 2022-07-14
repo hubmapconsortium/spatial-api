@@ -8,6 +8,7 @@ from spatialapi.utils import json_error
 from http import HTTPStatus
 import json
 import configparser
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +278,96 @@ class SpatialManager(object):
         rec['sample']['geom'] = l[10]
         return rec
 
+    def sample_geome_of_id_as_text(self, id: str) -> str:
+        sql: str = \
+            f"""SELECT ST_AsText(sample_geom) as sample_geom_text
+             FROM {manager.table}
+             WHERE id = %(id)s;
+            """
+        recs: List[str] = self.postgresql_manager.select(sql, {'id': id})
+        return recs[0]
+
+    def geometry_as_text(self, geometry: str) -> str:
+        sql: str = \
+            f"""SELECT ST_AsText('{geometry}') as sample_geom_text;
+            """
+        recs: List[str] = self.postgresql_manager.select(sql)
+        return recs[0]
+
+    def text_as_geometry(self, text: str) -> str:
+        sql: str = \
+            f"""SELECT ST_GeomFromText({text}) as sample_geom_text;
+            """
+        recs: List[str] = self.postgresql_manager.select(sql)
+        return recs[0]
+
+    def geom_check(self, id: int = None) -> None:
+        logger.info(f'Determine if geometries are: closed, solids, and have the correct volume...')
+        # NOTE: ST_IsValid(sample_geom) does not support POLYHEDRALSURFACE.
+        sql: str = 'SELECT' \
+                   ' sample_hubmap_id, sample_rui_location, ST_IsClosed(sample_geom),' \
+                   ' ST_Volume(sample_geom), ST_3DArea(sample_geom), ST_IsSolid(sample_geom)' \
+                   f' FROM {self.table}'
+        if id is not None:
+            sql += f' WHERE id = %(id)s'
+            logger.info(f'Checking geometry with id = {id}.')
+        else:
+            logger.info('Checking all geometries.')
+        sql += ';'
+        results: list = self.postgresql_manager.select_all(sql, {'id': id})
+        logger.info(f'Checking {len(results)} geometries!')
+        for result in results:
+            sample_hubmap_id: str = result[0]
+            sample_rui_location: dict = json.loads(result[1])
+            placement: dict = sample_rui_location['placement']
+            sample_rui_location_volume: float = \
+                sample_rui_location["x_dimension"] * placement['x_scaling'] \
+                * sample_rui_location["y_dimension"] * placement['y_scaling'] \
+                * sample_rui_location["z_dimension"] * placement['z_scaling']
+            sample_rui_location_volume = round(sample_rui_location_volume, 0)
+            is_closed: str = result[2]
+            # ST_Volume — Computes the volume of a 3D solid. If applied to surface (even closed) geometries will return 0.
+            st_volume: float = round(float(result[3]), 0)
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            st_3darea: float = result[4]
+            if is_closed is not True:
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; IS NOT CLOSED!')
+            if sample_rui_location_volume != st_volume:
+                logger.error(
+                    f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
+            # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            if st_3darea != 0:
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; ST_3DArea should return 0 for solids!')
+
+    # There is an error generated when trying go shrink after enlarging
+    # Solid is invalid : PolyhedralSurface (shell) 0 is invalid: Polygon 0 is invalid: points don't lie in the same plane
+    # This is likely due to rounding error in the scaling.
+    # Because translation is additive, this would likely work for that.
+    def modify_and_check_sample_id(self, id: int, scaling_factor: int = 10.0):
+        sql_id: str = f"""SELECT * from {manager.table} WHERE id = %(id)s;"""
+        recs: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
+        rec: dict = manager.list_to_rec_for_debugging(recs[0])
+        donor_sex: str = rec['donor']['sex']
+        if rec['donor']['sex'] == 'male':
+            rec['donor']['sex'] = 'female'
+        else:
+            rec['donor']['sex'] = 'male'
+        # Scale the sample by 10x so that we can see the difference with QGIS...
+        placement: dict = rec['sample']['rui_location']['placement']
+        placement['x_scaling'] *= scaling_factor
+        placement['y_scaling'] *= scaling_factor
+        placement['z_scaling'] *= scaling_factor
+        manager.upsert_rec(rec['relative_spatial_entry_iri'], rec)
+        recs2: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
+        rec2: dict = manager.list_to_rec_for_debugging(recs2[0])
+        if rec['sample']['geom'] == rec2['sample']['geom']:
+            logger.error(f"The geometries should have changed????")
+        if donor_sex == rec2['donor']['sex']:
+            logger.error(f"The sex should have changed????")
+        manager.geom_check(rec['id'])
+
+
     def find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id(self,
                                                                         relative_spatial_entry_iri: str,
                                                                         radius: float,
@@ -348,7 +439,11 @@ if __name__ == '__main__':
                         help='output a closed POLYHEDRALSURFACE from the three x y z dimensions given and exit')
     # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py -p '10 10 10')
     parser.add_argument("-s", "--sample_modify", action="store_true",
-                        help='modify a sample that is currently in the database')
+                        help='modify a sample that is currently in the database and exit')
+    parser.add_argument("-S", "--scaling_factor", type=float, default=10.0,
+                        help='modify a sample that is currently in the database by applying this scaling factor to it and exit')
+    parser.add_argument('-i', '--sample_id', type=int,
+                        help='choose this sample id for the test')
 
     args = parser.parse_args()
 
@@ -356,44 +451,40 @@ if __name__ == '__main__':
     config.read(args.config)
     manager = SpatialManager(config)
 
-    if args.sample_modify is True:
-        sql: str = f"""SELECT * from {manager.table} LIMIT 1;"""
-        recs: List[str] = manager.postgresql_manager.select_all(sql)
-        print(f"rec: {recs[0]}")
-        rec: dict = manager.list_to_rec_for_debugging(recs[0])
-        if rec['donor']['sex'] == 'male':
-            rec['donor']['sex'] = 'female'
+    try:
+        if args.sample_modify is True:
+            if args.sample_id is not None:
+                id: int = args.sample_id
+            else:
+                sql_count: str = f"""SELECT count(*) from {manager.table};"""
+                recs: List[str] = manager.postgresql_manager.select(sql_count)
+                id = random.randint(0, recs[0]-1)+1
+            manager.modify_and_check_sample_id(id, args.scaling_factor)
+            #import pdb;pdb.set_trace();
+
+        elif args.polyhedralsurface is not None:
+            try:
+                xyz_list: List[float] = [float(x) for x in args.polyhedralsurface.split()]
+            except ValueError:
+                logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
+                exit(1)
+            if len(xyz_list) != 3:
+                logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
+                exit(1)
+            x: float = xyz_list[0]
+            y: float = xyz_list[1]
+            z: float = xyz_list[2]
+            logger.info(f'Dimensions given are x: {x}, y: {y}, z: {z}')
+            print(manager.create_geom_with_dimension(x, y, z))
+
         else:
-            rec['donor']['sex'] = 'male'
-        manager.upsert_rec(rec['relative_spatial_entry_iri'], rec)
-        sql: str = f"""SELECT * from {manager.table} WHERE id = {rec['id']};"""
-        recs: List[str] = manager.postgresql_manager.select_all(sql)
-        print(f"rec: {recs[0]}")
-        #import pdb;pdb.set_trace();
-        exit(0)
-
-    if args.polyhedralsurface is not None:
-        try:
-            xyz_list: List[float] = [float(x) for x in args.polyhedralsurface.split()]
-        except ValueError:
-            logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
-            exit(1)
-        if len(xyz_list) != 3:
-            logger.error(f"You must specify 3 (float) dimensions: 'x y z'")
-            exit(1)
-        x: float = xyz_list[0]
-        y: float = xyz_list[1]
-        z: float = xyz_list[2]
-        logger.info(f'Dimensions given are x: {x}, y: {y}, z: {z}')
-        print(manager.create_geom_with_dimension(x, y, z))
-        exit(0)
-
-    # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
-    # RK:
-    # description: Kidney (Right)
-    # iri: http://purl.obolibrary.org/obo/UBERON_0004539
-    # https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml
-    manager.insert_organ_data('RK')
-    manager.insert_organ_data('LK')
-
-    manager.close()
+            # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
+            # RK:
+            # description: Kidney (Right)
+            # iri: http://purl.obolibrary.org/obo/UBERON_0004539
+            # https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml
+            manager.insert_organ_data('RK')
+            manager.insert_organ_data('LK')
+    finally:
+        manager.close()
+        logger.info('Done!')
