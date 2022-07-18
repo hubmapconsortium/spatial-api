@@ -101,7 +101,7 @@ class Neo4jManager(object):
             " organ.organ AS organ_name, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
         return self.query_with_cypher(cypher)
 
-    def query_organ(self, organ) -> List[dict]:
+    def query_organ(self, organ: str) -> List[dict]:
         # cypher: str =\
         #     "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
         #     f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
@@ -110,7 +110,18 @@ class Neo4jManager(object):
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
             f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" \
-            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id, s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
+            " o.uuid as organ_uuid, o.organ as organ_code"
+        return self.query_with_cypher(cypher)
+
+    def query_sample_uuid(self, sample_uuid: str) -> List[dict]:
+        cypher: str =\
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
             " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
             " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)

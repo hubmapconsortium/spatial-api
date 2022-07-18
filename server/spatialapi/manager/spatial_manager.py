@@ -210,6 +210,16 @@ class SpatialManager(object):
             self.upsert_rec(rec['organ']['code'], rec)
             self.insert_rec_relative_to_spatial_entry_iri(rec)
 
+    def upsert_sample_uuid_data(self, sample_uuid: str) -> None:
+        logger.info(f"Upserting data for sample uuid: {sample_uuid}")
+        recs: List[dict] = self.neo4j_manager.query_sample_uuid(sample_uuid)
+        if len(recs) == 0:
+            abort(json_error(f'The Neo4J query for the sample uuid ({sample_uuid}) returned no results', HTTPStatus.NOT_FOUND))
+        if len(recs) > 1:
+            abort(json_error(f'The Neo4J query for the sample uuid ({sample_uuid}) returned multiple entries', HTTPStatus.CONFLICT))
+        rec: dict = recs[0]
+        self.upsert_rec(rec['organ']['code'], rec)
+        self.insert_rec_relative_to_spatial_entry_iri(rec)
 
     def find_within_radius_at_origin(self, radius: float, x: float, y: float, z: float) -> List[str]:
         sql: str =\
@@ -344,6 +354,7 @@ class SpatialManager(object):
     # Solid is invalid : PolyhedralSurface (shell) 0 is invalid: Polygon 0 is invalid: points don't lie in the same plane
     # This is likely due to rounding error in the scaling.
     # Because translation is additive, this would likely work for that.
+    # NOTE: The inverse of scaling_factor == 10.0 is 0.1 and not -10.0
     def modify_and_check_sample_id(self, id: int, scaling_factor: int = 10.0):
         sql_id: str = f"""SELECT * from {manager.table} WHERE id = %(id)s;"""
         recs: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
@@ -362,9 +373,9 @@ class SpatialManager(object):
         recs2: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
         rec2: dict = manager.list_to_rec_for_debugging(recs2[0])
         if rec['sample']['geom'] == rec2['sample']['geom']:
-            logger.error(f"The geometries should have changed????")
+            logger.error(f"The geometry should have changed????")
         if donor_sex == rec2['donor']['sex']:
-            logger.error(f"The sex should have changed????")
+            logger.error(f"The donor sex should have changed????")
         manager.geom_check(rec['id'])
 
 
@@ -438,12 +449,14 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--polyhedralsurface', type=str,
                         help='output a closed POLYHEDRALSURFACE from the three x y z dimensions given and exit')
     # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py -p '10 10 10')
-    parser.add_argument("-s", "--sample_modify", action="store_true",
+    parser.add_argument("-m", "--sample_modify", action="store_true",
                         help='modify a sample that is currently in the database and exit')
     parser.add_argument("-S", "--scaling_factor", type=float, default=10.0,
                         help='modify a sample that is currently in the database by applying this scaling factor to it and exit')
     parser.add_argument('-i', '--sample_id', type=int,
                         help='choose this sample id for the test')
+    parser.add_argument('-u', '--update_sample_uuid', type=str,
+                        help='update the given sample_uuid data in the PostgreSQL database from a Neo4J query')
 
     args = parser.parse_args()
 
@@ -461,6 +474,10 @@ if __name__ == '__main__':
                 id = random.randint(0, recs[0]-1)+1
             manager.modify_and_check_sample_id(id, args.scaling_factor)
             #import pdb;pdb.set_trace();
+
+        # Same as the MSAPI call found in server/spatialapi/sample_update_uuid
+        elif args.update_sample_uuid is not None:
+            manager.upsert_sample_uuid_data(args.update_sample_uuid)
 
         elif args.polyhedralsurface is not None:
             try:
