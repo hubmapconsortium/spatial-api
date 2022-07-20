@@ -147,5 +147,23 @@ class Neo4jManager(object):
                     recs.append(processed_rec)
         return recs
 
+    def retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
+        ds_uuids: List[dict] = []
+        cypher: str = \
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
+            " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
+            " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
+            " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
+            " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
+            " RETURN DISTINCT ds.uuid AS ds_uuid"
+        with self.driver.session() as session:
+            results: neo4j.Result = session.run(cypher)
+            for record in results:
+                ds_uuid: str = record.get('ds_uuid')
+                if ds_uuid is not None:
+                    ds_uuids.append(ds_uuid)
+        return ds_uuids
+
     def query_right_kidney(self) -> List[dict]:
         return self.query_organ('RK')

@@ -22,8 +22,13 @@ def sample_update_uuid(uuid):
     logger.info(f'sample_update_uuid: Reading properties file: {app_properties}')
     config.read(app_properties)
     spatial_manager = SpatialManager(config)
+    tissue_sample_cell_type_manager = TissueSampleCellTypeManager(config)
 
+    # TODO: These calls together should probably be considered as a transaction...
     spatial_manager.upsert_sample_uuid_data(uuid)
+    # TODO: Get the Bearer Token from the request header...
+    tissue_sample_cell_type_manager.process_files_for_sample_uuid(bearer_token, uuid)
+
     return make_response("Success", HTTPStatus.OK)
 
 def parameter_validation(uuid: str) -> None:
