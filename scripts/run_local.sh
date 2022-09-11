@@ -5,20 +5,22 @@
 
 usage()
 {
-  echo "Usage: $0 [-d] [-s] [-t] [-h]"
+  echo "Usage: $0 [-d] [-s] [-D] [-t] [-h]"
   echo "Default action is to do nothing"
   echo " -d Rebuild DB"
   echo " -s Rebuild Server"
+  echo " -D Shutdown and destroy both containers and then exit"
   echo " -t run the Tests after bringing up the containers"
   echo " -h Help"
   exit 2
 }
 
 unset VERBOSE
-while getopts 'dsth' c; do
+while getopts 'dsDth' c; do
   case $c in
     d) DB=true ;;
     s) SERVER=true ;;
+    D) DOWN=true ;;
     t) TESTS=true ;;
     h|?) usage ;;
   esac
@@ -31,7 +33,7 @@ status=$?
 if [[ $status != 0 ]] ; then
     echo '*** Python3 must be installed!'
     echo '*** Try running scripts/install_venv.sh'
-    exit
+    exit 1
 fi
 
 ACTIVATE='venv/bin/activate'
@@ -41,6 +43,14 @@ if [[ ! -r ./server/$ACTIVATE ]]; then
   (cd server; python3 -m venv venv; source $ACTIVATE; pip install -r ../requirements.txt; )
 fi
 
+if [ $DOWN ]; then
+  echo ">>> Shut down and destroy DB and SERVER containers..."
+  echo
+  docker-compose -f docker-compose.db.local.yml down --rmi all
+  docker-compose -f docker-compose.api.local.yml down --rmi all
+  exit 0
+fi
+
 if [ $DB ] || [ $SERVER ]; then
   docker network create shared-web
 fi
@@ -48,8 +58,8 @@ fi
 if [ $DB ]; then
   echo ">>> Shut down and destroy DB container before bringing it up..."
   echo
-  docker-compose -f docker-compose.local.yml down --rmi all
-  docker-compose -f docker-compose.local.yml up --build -d
+  docker-compose -f docker-compose.db.local.yml down --rmi all
+  docker-compose -f docker-compose.db.local.yml up --build -d
 
   echo
   echo ">>> Sleeping to give the DB a chance to start before rebuilding it..."
@@ -79,29 +89,25 @@ if [ $SERVER ]; then
     echo "ERROR: You need to create a $APP_LOCAL_PROPERTIES file."
     exit 1
   fi
-  APP_PROPERTIES=server/resources/app.properties
-  if [[ ! -f $APP_PROPERTIES ]]; then
-    echo "ERROR: You need to create a $APP_PROPERTIES file."
-    exit 1
-  fi
 
   echo ">>> Shut down and destroy SERVER container before bringing it up..."
   echo
-  docker-compose -f docker-compose.yml down --rmi all
+  docker-compose -f docker-compose.api.local.yml down --rmi all
   cp /dev/null ${SERVER_LOG}/uwsgi-spatial-api.log
-  docker-compose -f docker-compose.yml up --build -d
+  docker-compose -f docker-compose.api.local.yml up --build -d
 fi
 
 if [ $TESTS ]; then
   echo
   echo ">>> Run the Tests after bringing up the containers..."
   echo
+  (cd server; export PYTHONPATH=.; python3 ./tests/geom.py -c)
   ./scripts/search_hubmap_id.sh
   ./scripts/spatial_search_hubmap_id.sh
   ./scripts/spatial_search_point.sh
 fi
 
-if [ ! $DB ] && [ ! $SERVER ] && [ ! $TESTS ] ; then
+if [ ! $DB ] && [ ! $SERVER ] && [ ! $DOWN ] && [ ! $TESTS ] ; then
   echo "Nothing to do?!"
   echo
   usage

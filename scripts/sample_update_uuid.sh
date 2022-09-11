@@ -27,17 +27,19 @@ echo "Scheme, host, and port: ${SCHEME_HOST_PORT}"
 shift $((OPTIND-1))
 
 echo
-echo ">>> Testing spatialapi endpoint search_hubmap_id on $SCHEME_HOST_PORT..."
+echo ">>> Testing sample_update_uuid on $SCHEME_HOST_PORT..."
 echo
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/17/target/VHMale"
+# found...
+curl $VERBOSE --request PUT -si "${SCHEME_HOST_PORT}/sample/update/uuid/91832ec2f9dad1468f4f3bf18ee1f310"
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/0.01/target/VHFemale"
+# not found....
+curl $VERBOSE --request PUT -si "${SCHEME_HOST_PORT}/sample/update/uuid/01832ec2f9dad1468f4f3bf18ee1f310"
 
 echo
 echo ">>> These should fail validation..."
 echo
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/one/target/VHFemale"
+curl $VERBOSE --request PUT -si "${SCHEME_HOST_PORT}/sample/update/uuid/Q1832ec2f9dad1468f4f3bf18ee1f310"
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/0.01/target/VHBird"
+curl $VERBOSE --request PUT -si "${SCHEME_HOST_PORT}/sample/update/uuid/91832ec2f9dad1468f4f3bf18ee1f3100"

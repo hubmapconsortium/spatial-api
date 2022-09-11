@@ -6,7 +6,7 @@ services:
     hostname: spatial-api
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     restart: always
     environment:
       - HOST_GID=${HOST_GID:-1000}

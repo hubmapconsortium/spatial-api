@@ -1,6 +1,7 @@
 import logging
 from spatialapi.manager.neo4j_manager import Neo4jManager
 from spatialapi.manager.postgresql_manager import PostgresqlManager
+from spatialapi.manager.ingest_api_manager import IngestApiManager
 from spatialapi.utils.ssh import Ssh
 import configparser
 import requests
@@ -10,6 +11,7 @@ from urllib import parse
 from typing import List
 
 logger = logging.getLogger(__name__)
+
 
 # 1) use the query to get the cell_types data
 # In the results of the Neo4J cypher each 'sample_uuid' will be the PostgreSQL 'cell_types.sample_uuid'.
@@ -22,52 +24,37 @@ logger = logging.getLogger(__name__)
 class TissueSampleCellTypeManager(object):
 
     def __init__(self, config):
-        tissue_sample_cell_type_config = config['tissueSampleCellType']
-        self.ingest_api_url: str = tissue_sample_cell_type_config.get('IngestApiUrl').rstrip('/')
-        logger.info(f"TissueSampleCellTypeManager IngestApiUrl: '{parse.quote(self.ingest_api_url)}'")
-
+        self.ingest_api_manager = IngestApiManager(config)
         self.neo4j_manager = Neo4jManager(config)
         self.postgresql_manager = PostgresqlManager(config)
         self.ssh = Ssh(config)
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
     def close(self) -> None:
-        logger.info(f'Neo4jManager: Closing connection to Neo4J, PostgreSQL, and Ssh')
+        logger.info(f'TissueSampleCellTypeManager: Closing connection to Neo4J, PostgreSQL, and Ssh')
+        self.ingest_api_manager.close()
         self.neo4j_manager.close()
         self.postgresql_manager.close()
         self.ssh.close()
 
-    # Login through the UI (https://portal.hubmapconsortium.org/) to get the credentials...
-    # In Firefox (Tools > Browser Tools > Web Developer Tools).
-    # Click on "Storage" then the dropdown for "Local Storage" and then the url,
-    # Applications use the "nexus_token" from the returned information.
-    # UI times-out in 15 min so close the browser window, and the token will last for a day or so.
-    # nexus_token:"Agzm4GmNjj5rdwEm2zwJrB9EdgpeDXzz3EYxGaNrrVbedgV5qKHkC9WJlGg1p8bQwKa0aNGVenggo4SpxnaD7t7bex"
-    def ds_uuid_to_psc_path(self, ds_uuid: str, bearer_token: str) -> str:
-        ingest_uri: str = f'{self.ingest_api_url}/datasets/{ds_uuid}/file-system-abs-path'
-        headers: dict = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer %s' % bearer_token
-        }
-        response: str = requests.get(ingest_uri, headers=headers)
-        if response.status_code != 200:
-            if response.status_code == 404:
-                logger.info(f"ds_uuid_to_psc_path: ds_uuid '{ds_uuid}' not found.")
-                return None
-            logger.info(f"ds_uuid_to_psc_path: ds_uuid '{ingest_uri}' status code: {response.status_code}.")
-            return None
-        response_json: dict = response.json()
-        if 'path' not in response_json:
-            return None
-        return response_json['path']
-
     def get_cell_types_data(self, bearer_token: str) -> List[dict]:
         recs: List[dict] = self.neo4j_manager.query_cell_types()
         for rec in recs:
-            psc_path: str = self.ds_uuid_to_psc_path(rec['ds_uuid'], bearer_token)
+            psc_path: str = self.ingest_api_manager.ds_uuid_to_psc_path(rec['ds_uuid'], bearer_token)
             if psc_path is not None:
                 rec['psc_file'] = psc_path+'/secondary_analysis.h5ad'
         return recs
+
+    def process_files_for_sample_uuid(self, bearer_token: str, sample_uuid: str) -> None:
+        ds_uuids: List[str] =\
+            self.neo4j_manager.retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(sample_uuid)
+        # TODO: Delete everything from the 'cell_types' table with this sample_uuid.
+        resp_json: dict =\
+            self.ingest_api_manager.process_all_ds_uuid_secondary_analysis_files(bearer_token, ds_uuids)
+        cell_type_counts: dict = resp_json['cell_type_counts']
+        if cell_type_counts is not None:
+            for cell_type_name, cell_type_count in cell_type_counts.items():
+                self.postgresql_manager.add_cell_type_count(sample_uuid, cell_type_name, cell_type_count)
 
     def dump_cell_types_data(self, bearer_token: str, json_file: str) -> None:
         cell_types_data: List[dict] = manager.get_cell_types_data(bearer_token)
@@ -104,16 +91,40 @@ if __name__ == '__main__':
 
     # https://docs.python.org/3/howto/argparse.html
     parser = argparse.ArgumentParser(
-        description='Tissue Sample Cell Type Manager',
+        description='''Tissue Sample Cell Type Manager
+        
+Steps:
+1) Build the data.json file you will need to run 'tissue_sample_cell_type_manager.py --build_json_token BEARER_TOKEN'
+ See the note below for a description of how to get the BEARER_TOKEN
+2) To process the data.json file converting it to a data_out.json file; log into the PSC server, and run the following:
+$ ssh kollar@hive.psc.edu
+$ ssh kollar@hivevm191.psc.edu
+$ cd ~/bin/psc
+$ ./mkvenv.sh
+$ source venv/bin/activate
+$ ./test.py
+3) To process the data_out.json file you will need to run 'tissue_sample_cell_type_manager.py --process_json'
+
+NOTE: To retrieve the token for the build_json_token:
+In Firefox open 'Tools > Browser Tools > Web Developer Tools'.
+Login through the UI(https://portal.hubmapconsortium.org/).
+In the Web Developer Tools, click on 'Network', and then one of the search endpoints.
+Copy the 'Request Header', 'Authoriation : Bearer' token.
+
+UI times-out in 15 min so close the browser window, and the token will last for a day or so.
+''',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
-                        help='config file to use')
-    parser.add_argument("-b", '--build_json', action="store_true",
-                        help='build the .json file that is processed at the psc')
+                        help='config file to use for processing')
+    parser.add_argument("-b", '--build_json_token', type=str,
+                        help='build the .json file that is processed at the psc, the value is a bearer token to use for ingest_api endpoint call')
     parser.add_argument("-p", '--process_json', action="store_true",
                         help='process the .json file created at the psc')
     parser.add_argument("-r", "--run_psc", action="store_true",
                         help='run code on the psc')
+    # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py -d b2362226c142a855ddaa0fba0db29b95 -b )
+    parser.add_argument("-d", '--process_data_files_for_sample_id', type=str,
+                        help='the sample id or which to process the secondary analysis files')
 
     args = parser.parse_args()
 
@@ -125,22 +136,40 @@ if __name__ == '__main__':
     local_working_dir: str = '../scripts/psc'
 
     try:
-        if args.build_json:
+        if args.process_data_files_for_sample_id is not None and args.build_json_token is not None:
+            sample_uuid: str = args.process_data_files_for_sample_id
+            bearer_token: str = args.build_json_token
+            logger.info(f"Testing IngestApiManager.extract_cell_count_from_secondary_analysis_files")
+            logger.info(f"Bearer token: {bearer_token}")
+            logger.info(f"sample_uuid: {sample_uuid}")
+            ds_uuids: List[str] = \
+                manager.neo4j_manager.retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(sample_uuid)
+            logger.info(f"Neo4jManager.retrieve_ds_uuids_with_rui_location_information_for_sample_uuid; ds_uuids: {', '.join(ds_uuids)}")
+            resp_json: dict =\
+                manager.ingest_api_manager.extract_cell_count_from_secondary_analysis_files(bearer_token, ds_uuids)
+            logger.info(f"cell type counts: {resp_json['cell_type_counts']}")
+
+        elif args.build_json_token is not None:
             logger.info(f'** Building data.json and sending it to {psc_working_dir}...')
 
-            token = 'Agm9bW6Brq7gGlX6gz2omp7WzdaxzzEn9yz8n3Vw9qXW1nznndF8CwGaBNqEBlyBawx957nEa5oYB7U6382eatm2aQ'
-            manager.dump_cell_types_data(token, '../scripts/psc/data.json')
+            manager.dump_cell_types_data(args.build_json_token, '../scripts/psc/data.json')
 
             ssh = Ssh(config)
 
             ssh.send_shell(f'mkdir -f {psc_working_dir}')
-            ssh.scp_put('../scripts/psc/mkenv.sh', psc_working_dir)
+            ssh.scp_put('../scripts/psc/mkvenv.sh', psc_working_dir)
             ssh.scp_put('../scripts/psc/requirements.txt', psc_working_dir)
             ssh.scp_put('../scripts/psc/test.py', psc_working_dir)
             ssh.scp_put('../scripts/psc/data.json', psc_working_dir)
 
         elif args.run_psc:
             logger.info(f'** Building data.json on psc server...')
+
+            # $ ssh kollar@hive.psc.edu
+            # $ ssh kollar@hivevm191.psc.edu
+            # $ cd ~/bin/psc
+            # $ ./mkvenv.sh
+            #
 
             # ssh.send_shell('cd ~/bin')
             # ssh.send_shell('rm -rf ./psc')

@@ -5,6 +5,7 @@ from spatialapi.manager.spatial_manager import SpatialManager
 import configparser
 import math
 import json
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,11 @@ class Geom(object):
         self.table = spatial_config.get('Table')
         logger.info(f'{self.__class__.__name__}: Table: {self.table}')
 
+        self.sample_hubmap_id = sample_hubmap_id
         sample_rui_location: dict = \
             self.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, relative_spatial_entry_iri)
         self.p: Point3D = self.centroid_from_sample_rui_location(sample_rui_location)
+        logger.info(f'Centroid of sample_rui_location ({sample_rui_location}): {self.p}')
 
         self.distances: List[dict] = self.build_distance_for_all_hubmap_ids(relative_spatial_entry_iri)
 
@@ -52,21 +55,51 @@ class Geom(object):
         self.spatial_manager.close()
 
 
+    # Since the object is created with its centroid at <0, 0, 0> the only location data that matters is the translation.
     def centroid_from_sample_rui_location(self,
                                           sample_rui_location: dict
                                           ) -> Point3D:
         placement: dict = sample_rui_location['placement']
         return Point3D(
-            sample_rui_location['x_dimension']/2 + placement['x_translation'],
-            sample_rui_location['y_dimension']/2 + placement['y_translation'],
-            sample_rui_location['z_dimension']/2 + placement['z_translation']
-        )
+            placement['x_translation'],
+            placement['y_translation'],
+            placement['z_translation']
+            )
+
+    def distance_between_Point3Ds(self, p1: Point3D, p2: Point3D) -> float:
+        return math.sqrt(
+            (p1.x - p2.x) ** 2 +
+            (p1.y - p2.y) ** 2 +
+            (p1.z - p2.z) ** 2
+            )
 
     def distance_from_sample_rui_location(self,
                                           sample_rui_location: dict
                                           ) -> float:
         p: Point3D = self.centroid_from_sample_rui_location(sample_rui_location)
-        return math.sqrt((self.p.x - p.x) ** 2 + (self.p.y - p.y) ** 2 + (self.p.z - p.z) ** 2)
+        return self.distance_between_Point3Ds(self.p, p)
+
+    def closest_point_distance(self,
+                               sample_hubmap_id: str
+                               ) -> List[float]:
+        # https://postgis.net/docs/ST_3DClosestPoint.html
+        sql: str = \
+            'WITH' \
+            f" s(poly) AS (SELECT sample_geom FROM {self.table} WHERE sample_hubmap_id = %(sample_hubmap_id_a)s)" \
+            f", t(poly) AS (SELECT sample_geom FROM {self.table} WHERE sample_hubmap_id = %(sample_hubmap_id_b)s)" \
+            " SELECT ST_AsEWKT(ST_3DClosestPoint(s.poly, t.poly))" \
+            " FROM s, t;"
+        points: list = self.postgresql_manager.select_all(
+            sql,
+            {'sample_hubmap_id_a': sample_hubmap_id,
+             'sample_hubmap_id_b': self.sample_hubmap_id
+             })
+        distances: List[float] = []
+        for point in points:
+            pts: list = [float(s) for s in re.findall(r'-?\d+\.?\d*', point[0])]
+            p: Point3D = Point3D(pts[0], pts[1], pts[2])
+            distances.append(self.distance_between_Point3Ds(self.p, p))
+        return distances
 
     def build_distance_for_all_hubmap_ids(self,
                                           relative_spatial_entry_iri=None
@@ -82,10 +115,10 @@ class Geom(object):
         for hil in hubmap_id_locations:
             sample_hubmap_id: str = hil[0]
             sample_rui_location: dict = json.loads(hil[1])
-            # import pdb; pdb.set_trace();
             distances.append({
                 'sample_hubmap_id': sample_hubmap_id,
-                'distance': self.distance_from_sample_rui_location(sample_rui_location)})
+                'distance': self.distance_from_sample_rui_location(sample_rui_location)
+            })
         return distances
 
     def hubmap_ids_within_radius_of_centroid(self,
@@ -96,6 +129,35 @@ class Geom(object):
             if d['distance'] <= radius:
                 hubmap_ids.append(d['sample_hubmap_id'])
         return hubmap_ids
+
+    def distance_check(self, relative_spatial_entry_iri: str, radius: float) -> None:
+        # NOTE: Things seem to break between -r 99-167
+        logger.info(f">>> Called with; sample_hubmap_id: {self.sample_hubmap_id};"
+                    f" relative_spatial_entry_iri: {relative_spatial_entry_iri};"
+                    f" radius {radius}")
+
+        should_find_sample_hubmap_ids: List[str] = \
+            self.hubmap_ids_within_radius_of_centroid(radius)
+
+        found_sample_hubmap_ids: List[str] = \
+            self.spatial_manager.find_relative_to_spatial_entry_iri_within_radius_from_point(
+                relative_spatial_entry_iri, radius, self.p.x, self.p.y, self.p.z)
+        logger.info(
+            f">>> Should find {len(should_find_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(should_find_sample_hubmap_ids)}")
+        logger.info(
+            f">>> Fond in search {len(found_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(found_sample_hubmap_ids)}")
+        not_in_both = set(should_find_sample_hubmap_ids) ^ set(found_sample_hubmap_ids)
+        logger.info(f">>> Not in both {len(not_in_both)} sample_hubmap_ids: {', '.join(not_in_both)}")
+
+        for sample_hubmap_id in not_in_both:
+            sample_rui_location: dict = \
+                self.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, relative_spatial_entry_iri)
+            distance: float = self.distance_from_sample_rui_location(sample_rui_location)
+            distances: List[float] = self.closest_point_distance(sample_hubmap_id)
+            logger.info(f"Distances to sample_hubmap_id: {sample_hubmap_id}: {distances}")
+            # import pdb; pdb.set_trace();
+            logger.info(
+                f"sample_hubmap_id: {sample_hubmap_id} computed distance: {distance} x: {sample_rui_location['x_dimension']} y: {sample_rui_location['y_dimension']} z: {sample_rui_location['z_dimension']}")
 
 
 # (cd server; export PYTHONPATH=.; python3 ./tests/geom.py -h)
@@ -120,38 +182,27 @@ all hubmap_ids within the given --radius.
 
 Finally, compare the lists returned. ''',
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
+    parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
+                        help='config file to use for processing')
     parser.add_argument('-i', '--sample_hubmap_id', type=str, default='HBM795.TSPP.994',
                         help='usd the centroid of this hubmap_id as the point to search from')
     parser.add_argument("-s", "--relative_spatial_entry_iri", type=str, default='VHMale',
                         help='the body associated with the sample_hubmap_id')
-    # parser.add_argument('-t', '--cell_type', type=str, default='Connecting Tubule',
-    #                     help='only consider hubmap_ids that have a sample with this cell type')
     parser.add_argument('-r', '--radius', type=float, default=100.0,
                         help='radius to search within the centroid of the hubmap_id given')
-
+    parser.add_argument("-c", '--geom_check', action="store_true",
+                        help='ONLY Determine if ALL geometries are: closed, solids, and have the correct volume...')
     args = parser.parse_args()
 
     config = configparser.ConfigParser()
-    config.read('resources/app.local.properties')
+    config.read(args.config)
     manager = Geom(config, args.sample_hubmap_id, args.relative_spatial_entry_iri)
 
-    should_find_sample_hubmap_ids: List[str] =\
-        manager.hubmap_ids_within_radius_of_centroid(args.radius)
-
-    found_sample_hubmap_ids: List[str] =\
-        manager.spatial_manager.find_relative_to_spatial_entry_iri_within_radius_from_point(
-            args.relative_spatial_entry_iri, args.radius, manager.p.x, manager.p.y, manager.p.z)
-
-    logger.info(f"Should find {len(should_find_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(should_find_sample_hubmap_ids)}")
-    logger.info(f"Fond in search {len(found_sample_hubmap_ids)} sample_hubmap_ids: {', '.join(found_sample_hubmap_ids)}")
-    not_in_both = set(should_find_sample_hubmap_ids) ^ set(found_sample_hubmap_ids)
-    logger.info(f"Not in both: {', '.join(not_in_both)}")
-    for sample_hubmap_id in not_in_both:
-        sample_rui_location: dict = \
-            manager.spatial_manager.hubmap_id_sample_rui_location(sample_hubmap_id, args.relative_spatial_entry_iri)
-        distance: float = manager.distance_from_sample_rui_location(sample_rui_location)
-        logger.info(f"sample_hubmap_id: {sample_hubmap_id} distance: {distance} x: {sample_rui_location['x_dimension']} y: {sample_rui_location['y_dimension']} z: {sample_rui_location['z_dimension']}")
-
-    logger.info("Done!")
-
-    manager.close()
+    try:
+        if args.geom_check:
+            manager.spatial_manager.geom_check()
+        else:
+            manager.distance_check(args.relative_spatial_entry_iri, args.radius)
+    finally:
+        manager.close()
+        logger.info('Done!')

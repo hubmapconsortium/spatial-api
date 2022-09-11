@@ -15,6 +15,7 @@ class Neo4jManager(object):
         username: str = neo4j_config.get('Username')
         password: str = neo4j_config.get('Password')
         logger.info(f'Neo4jManager: Username: {username} Server: {server}')
+        # Could throw: neo4j.exceptions.ServiceUnavailable
         self.driver = neo4j.GraphDatabase.driver(server, auth=(username, password))
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
@@ -33,15 +34,21 @@ class Neo4jManager(object):
 
     def process_record(self, record: dict) -> dict:
         try:
-            organ: dict = {'uuid': record.get('organ_uuid'),
-                           'code': record.get('organ_code')
-                           }
+            organ: dict = {
+                'uuid': record.get('organ_uuid'),
+                'code': record.get('organ_code')
+            }
             donor_metadata: str = record.get('donor_metadata')
+            if donor_metadata is None:
+                logger.info(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
+                return None
             organ_donor_data: dict = json.loads(donor_metadata)
+
             organ_donor_data_list: List[dict] = organ_donor_data['organ_donor_data']
-            donor: dict = {'uuid': record.get('donor_uuid'),
-                           'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
-                           }
+            donor: dict = {
+                'uuid': record.get('donor_uuid'),
+                'sex': self.search_organ_donor_data_for_grouping_concept_preferred_term(organ_donor_data_list, 'Sex')
+            }
             try:
                 rui_location: str = record.get('sample_rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
@@ -54,15 +61,17 @@ class Neo4jManager(object):
                 logger.info(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
                 return None
 
-            sample: dict = {'uuid': record.get('sample_uuid'),
-                            'hubmap_id': record.get('sample_hubmap_id'),
-                            'specimen_type': record.get('sample_specimen_type'),
-                            'rui_location': rui_location_json
-                            }
-            rec: dict = {'sample': sample,
-                         'organ': organ,
-                         'donor': donor
-                         }
+            sample: dict = {
+                'uuid': record.get('sample_uuid'),
+                'hubmap_id': record.get('sample_hubmap_id'),
+                'specimen_type': record.get('sample_specimen_type'),
+                'rui_location': rui_location_json
+            }
+            rec: dict = {
+                'sample': sample,
+                'organ': organ,
+                'donor': donor
+            }
             return rec
         except KeyError:
             return None
@@ -92,7 +101,7 @@ class Neo4jManager(object):
             " organ.organ AS organ_name, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
         return self.query_with_cypher(cypher)
 
-    def query_organ(self, organ) -> List[dict]:
+    def query_organ(self, organ: str) -> List[dict]:
         # cypher: str =\
         #     "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
         #     f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
@@ -101,7 +110,18 @@ class Neo4jManager(object):
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
             f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" \
-            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id, s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
+            " o.uuid as organ_uuid, o.organ as organ_code"
+        return self.query_with_cypher(cypher)
+
+    def query_sample_uuid(self, sample_uuid: str) -> List[dict]:
+        cypher: str =\
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
             " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
             " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)
@@ -126,6 +146,24 @@ class Neo4jManager(object):
                     }
                     recs.append(processed_rec)
         return recs
+
+    def retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
+        ds_uuids: List[dict] = []
+        cypher: str = \
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
+            " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
+            " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
+            " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
+            " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
+            " RETURN DISTINCT ds.uuid AS ds_uuid"
+        with self.driver.session() as session:
+            results: neo4j.Result = session.run(cypher)
+            for record in results:
+                ds_uuid: str = record.get('ds_uuid')
+                if ds_uuid is not None:
+                    ds_uuids.append(ds_uuid)
+        return ds_uuids
 
     def query_right_kidney(self) -> List[dict]:
         return self.query_organ('RK')
