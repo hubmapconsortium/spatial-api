@@ -6,6 +6,7 @@ from psycopg2.errors import UniqueViolation, NotNullViolation
 from spatialapi.manager.neo4j_manager import Neo4jManager
 from spatialapi.manager.postgresql_manager import PostgresqlManager
 from spatialapi.manager.spatial_manager import SpatialManager
+from spatialapi.manager.spatial_placement_manager import SpatialPlacementException
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +34,20 @@ class SampleLoadManager(object):
 
     # NOTE: This does not handle cell_type_counts
     def insert_sample_data(self, rec: dict) -> None:
-        # TODO: Need only one line per sample, so the geom data should be normalized.
-        sql_upsert_placement_relative_to_organ_code: str =\
-            self.spatial_manager.create_sample_rec_sql_upsert(rec['organ']['code'], rec)
-
-        sql_upsert_placement_relative_to_body: str =\
-            self.spatial_manager.create_sample_rec_sql_upsert_placement_relative_to_body(rec)
-
         try:
             cursor = self.postgresql_manager.new_cursor()
 
+            sql_upsert_placement_relative_to_organ_code: str = \
+                self.spatial_manager.create_sample_rec_sql_upsert(rec['organ']['code'], rec)
             cursor.execute(sql_upsert_placement_relative_to_organ_code)
+
             # NOTE: This needs to be run on prod because of interaction with Indiana code...
-            cursor.execute(sql_upsert_placement_relative_to_body)
+            try:
+                sql_upsert_placement_relative_to_body: str = \
+                    self.spatial_manager.create_sample_rec_sql_upsert_placement_relative_to_body(rec)
+                cursor.execute(sql_upsert_placement_relative_to_body)
+            except SpatialPlacementException:
+                logger.error(f'An error occurred while determining placing the sample rui location within the body.')
 
             self.postgresql_manager.commit()
             logger.info("All work committed!")

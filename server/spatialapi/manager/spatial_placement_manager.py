@@ -25,6 +25,10 @@ def adjust_placement_target_if_necessary(rec: dict) -> None:
             rui_location['placement']['target'] = placement_target.replace('#VH', '#VHMF') + '_Patch'
 
 
+class SpatialPlacementException(Exception):
+    pass
+
+
 # This is the interface to the MSAPI Endpoint at Illinois which adjusts the placement of the sample in the
 # organ relative to the body.
 class SpatialPlacementManager(object):
@@ -52,8 +56,8 @@ class SpatialPlacementManager(object):
             }
         )
         if resp.status_code != 200:
-            logger.info(f"SpatialPlacementManager/request: POST {self.server}: status: {resp.status_code}; rui_location: {json.dumps(sample_rui_location)}")
-            exit()
+            logger.error(f"**** SpatialPlacementManager/request: POST {self.server}: status: {resp.status_code}; rui_location: {json.dumps(sample_rui_location)}")
+            raise SpatialPlacementException()
         placement: dict = resp.json()
         logger.debug(f"SpatialPlacementManager/request: {self.server} placement: {placement}")
         return placement

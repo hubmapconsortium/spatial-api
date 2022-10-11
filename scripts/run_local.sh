@@ -14,7 +14,7 @@
 usage()
 {
   echo
-  echo "Usage: $0 BEARER_TOKEN [-d] [-s] [-D] [-t] [-h]"
+  echo "Usage: $0 [-d] [-s] [-D] [-t] [-h] BEARER_TOKEN"
   echo "Default action is to do nothing"
   echo "Required parameters:"
   echo " BEARER_TOKEN is needed to call ingest_api to get the cell_type_counts"
