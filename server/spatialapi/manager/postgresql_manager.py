@@ -29,8 +29,14 @@ class PostgresqlManager(object):
         if self.conn is not None:
             self.conn.close()
 
+    def new_cursor(self):
+        return self.conn.cursor()
+
     def commit(self) -> None:
         self.conn.commit()
+
+    def rollback(self) -> None:
+        self.conn.rollback()
 
     def insert(self, sql: str) -> int:
         id: int = None
@@ -229,3 +235,13 @@ class PostgresqlManager(object):
             if cursor is not None:
                 cursor.close()
         return all
+
+    def execute(self, sql: str):
+        logger.info('Erasing the database...')
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute(sql)
+        finally:
+            if cursor is not None:
+                cursor.close()
+            logger.info('Database erasure is completed...')

@@ -1,10 +1,11 @@
-from flask import Blueprint, redirect, abort, current_app, jsonify, make_response, session, g
+from flask import Blueprint, abort, jsonify, make_response
 import configparser
-from spatialapi.manager.spatial_manager import SpatialManager
 from typing import List
 from spatialapi.utils import json_error
 from http import HTTPStatus
 import logging
+
+from spatialapi.manager.spatial_manager import SpatialManager
 
 logger = logging.getLogger(__name__)
 

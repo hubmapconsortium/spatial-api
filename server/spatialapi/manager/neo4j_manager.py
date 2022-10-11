@@ -40,8 +40,9 @@ class Neo4jManager(object):
             }
             donor_metadata: str = record.get('donor_metadata')
             if donor_metadata is None:
-                logger.info(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
+                logger.error(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
                 return None
+            donor_metadata = donor_metadata.replace("'", '"')
             organ_donor_data: dict = json.loads(donor_metadata)
 
             organ_donor_data_list: List[dict] = organ_donor_data['organ_donor_data']
@@ -53,12 +54,12 @@ class Neo4jManager(object):
                 rui_location: str = record.get('sample_rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
             except (SyntaxError, ValueError) as e:
-                logger.info(f'Error literal_eval parsing: {record}')
+                logger.error(f'Error literal_eval parsing: {record}; error: {e}')
                 return None
 
             if rui_location_json['@type'] != 'SpatialEntity' and \
                     rui_location_json['placement']['@type'] != 'SpatialPlacement':
-                logger.info(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
+                logger.error(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
                 return None
 
             sample: dict = {
@@ -73,7 +74,8 @@ class Neo4jManager(object):
                 'donor': donor
             }
             return rec
-        except KeyError:
+        except KeyError as e:
+            logger.error(f"Key error: {e}")
             return None
 
     def query_with_cypher(self, cypher: str) -> List[dict]:
@@ -83,11 +85,11 @@ class Neo4jManager(object):
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
             for record in results:
-                results_n = results_n + 1
                 processed_rec: dict = self.process_record(record)
                 #import pdb; pdb.set_trace()
                 if processed_rec is not None:
                     recs.append(processed_rec)
+                    results_n = results_n + 1
                 else:
                     bad_parse_n = bad_parse_n + 1
         logger.info(f'results: {results_n}; Parse Errors: {bad_parse_n}')
@@ -147,7 +149,7 @@ class Neo4jManager(object):
                     recs.append(processed_rec)
         return recs
 
-    def retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
+    def retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
         ds_uuids: List[dict] = []
         cypher: str = \
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \

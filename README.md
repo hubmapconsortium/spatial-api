@@ -36,8 +36,8 @@ Login to the deployment server (in this case DEV) and get the latest version of 
 ```bash
 # Access the server, switch accounts and go to the server directory
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.dev.hubmapconsortium.org
-$ sudo /bin/su - centos
-$ cd hubmap/spatial-api
+$ sudo /bin/su - hive
+$ cd /opt/hubmap
 $ pwd
 /home/centos/hubmap/spatial-api
 $ git checkout main

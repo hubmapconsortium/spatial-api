@@ -1,11 +1,12 @@
-Flask == 2.0.0
-globus-sdk == 3.0.2
-neo4j == 4.2.1
-psycopg2-binary == 2.9.3
-rdflib >= 6.0.0
-requests == 2.26.0
-urllib3 == 1.26.7
-uWSGI == 2.0.19.1
-beautifulsoup4 >= 4.11.1
-paramiko >= 2.11.0
-scp >= 0.14.4
+beautifulsoup4==4.11.1
+Flask==2.0.0
+globus-sdk==3.0.2
+neo4j==4.4
+psycopg2-binary==2.9.3
+paramiko==2.11.0
+PyJWT==2.4.0
+rdflib==6.2.0
+requests==2.26.0
+scp==0.14.4
+urllib3==1.26.7
+uWSGI==2.0.19.1

@@ -3,10 +3,22 @@
 # To recreate the containers, load the data, and run the tests...
 # $ ./scripts/run_local.sh -dlt
 
+# $ docker exec -ti spatial-api /bin/sh
+
+# To get the BEARER_TOKEN, login through the UI (https://portal.hubmapconsortium.org/) to get the credentials...
+# In Firefox open 'Tools > Browser Tools > Web Developer Tools'.
+# Click on "Storage" then the dropdown for "Local Storage" and then the url,
+# Applications use the "nexus_token" from the returned information.
+# UI times-out in 15 min so close the browser window, and the token will last for a day or so.
+
 usage()
 {
-  echo "Usage: $0 [-d] [-s] [-D] [-t] [-h]"
+  echo
+  echo "Usage: $0 BEARER_TOKEN [-d] [-s] [-D] [-t] [-h]"
   echo "Default action is to do nothing"
+  echo "Required parameters:"
+  echo " BEARER_TOKEN is needed to call ingest_api to get the cell_type_counts"
+  echo "Optional parameters:"
   echo " -d Rebuild DB"
   echo " -s Rebuild Server"
   echo " -D Shutdown and destroy both containers and then exit"
@@ -26,7 +38,13 @@ while getopts 'dsDth' c; do
   esac
 done
 
-shift $((OPTIND-1))
+shift $(($OPTIND - 1))
+
+if [[ $# -eq 1 ]] ; then
+  BEARER_TOKEN=$1
+else
+  usage
+fi
 
 which python3
 status=$?
@@ -40,8 +58,9 @@ ACTIVATE='venv/bin/activate'
 if [[ ! -r ./server/$ACTIVATE ]]; then
   echo '*** Building venv....'
   python3 -m pip install --upgrade pip
-  (cd server; python3 -m venv venv; source $ACTIVATE; pip install -r ../requirements.txt; )
+  (cd server; python3 -m venv venv; pip install -r ../requirements.txt; )
 fi
+source ./server/$ACTIVATE
 
 if [ $DOWN ]; then
   echo ">>> Shut down and destroy DB and SERVER containers..."
@@ -65,19 +84,8 @@ if [ $DB ]; then
   echo ">>> Sleeping to give the DB a chance to start before rebuilding it..."
   sleep 5
 
-  DATA_OUT_JSON=scripts/psc/data_out.json
-  if [[ ! -f $DATA_OUT_JSON ]]; then
-    echo "ERROR: You need to build and copy the $DATA_OUT_JSON file from the PSC machine."
-    exit 1
-  fi
-
-  echo
-  echo ">>> Rebuilding database after destroying its container..."
-  echo
-  (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py)
-
-  (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/cell_annotation_manager.py --load)
-  (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py --process_json)
+  # At this point the Database is up with all tables and constraints are created.
+  # Some geometric test data loaded, but no data source data loaded (e.g., the DB is empty).
 fi
 
 if [ $SERVER ]; then
@@ -95,6 +103,13 @@ if [ $SERVER ]; then
   docker-compose -f docker-compose.api.local.yml down --rmi all
   cp /dev/null ${SERVER_LOG}/uwsgi-spatial-api.log
   docker-compose -f docker-compose.api.local.yml up --build -d
+fi
+
+if [ $DB ]; then
+  echo
+  echo ">>> Rebuilding database (through server) after destroying its container..."
+  echo
+  ./scripts/db_rebuild.sh -t $BEARER_TOKEN
 fi
 
 if [ $TESTS ]; then
