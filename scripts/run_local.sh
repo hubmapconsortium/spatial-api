@@ -14,23 +14,21 @@
 usage()
 {
   echo
-  echo "Usage: $0 [-d] [-s] [-D] [-t] [-h] BEARER_TOKEN"
+  echo "Usage: $0 [-d BEARER_TOKEN] [-s] [-D] [-t] [-h]"
   echo "Default action is to do nothing"
-  echo "Required parameters:"
-  echo " BEARER_TOKEN is needed to call ingest_api to get the cell_type_counts"
   echo "Optional parameters:"
-  echo " -d Rebuild DB"
-  echo " -s Rebuild Server"
-  echo " -D Shutdown and destroy both containers and then exit"
-  echo " -t run the Tests after bringing up the containers"
-  echo " -h Help"
+  echo " -d BEARER_TOKEN - Rebuild DB"
+  echo " -s              - Rebuild Server"
+  echo " -D              - Shutdown and destroy both containers and then exit"
+  echo " -t              - Run the Tests after bringing up the containers"
+  echo " -h              -Help"
   exit 2
 }
 
 unset VERBOSE
-while getopts 'dsDth' c; do
+while getopts 'd:sDth' c; do
   case $c in
-    d) DB=true ;;
+    d) DB=true; BEARER_TOKEN=$OPTARG ;;
     s) SERVER=true ;;
     D) DOWN=true ;;
     t) TESTS=true ;;
@@ -39,12 +37,6 @@ while getopts 'dsDth' c; do
 done
 
 shift $(($OPTIND - 1))
-
-if [[ $# -eq 1 ]] ; then
-  BEARER_TOKEN=$1
-else
-  usage
-fi
 
 which python3
 status=$?

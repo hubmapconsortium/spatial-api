@@ -4,13 +4,13 @@ This information will help you get the Spatian API up in running whether locally
 
 ## Configuration File
 
-The configuration file should be located in `resources/app.properties` for deployment.
-There is a `resources/app.example.properties` that you can use as a template for `resources/app.properties`.
-The `resources/application.example.properties` assumes that the database is running in
+The configuration file should be located in `./server/resources/app.properties` for deployment.
+There is a `./server/resources/app.example.properties` that you can use as a template for `./server/resources/app.properties`.
+The `./server/resources/application.example.properties` assumes that the database is running in
 a docker container with a network common to the Spatial API container.
 This will likely be the case when running locally (see `scripts/run_local.sh`).
 
-The `resources/app.local.properties` is used by scripts that wish to access the database
+The `./server/resources/app.local.properties` is used by scripts that wish to access the database
 running in the local Docker containers.
 The notable difference is that when accessing the PostgreSQL server form the container
 (as the microservice would do) the database Services name `db` (from `docker-compose.yml`) should be used.
@@ -19,7 +19,7 @@ When accessing the database from a script running on the localhost (anything in 
 Since this microservice accesses a Neo4j, and a PosgreSQL database you will need to provide the server,
 user, and password for these.
 
-The `resources/app.properties` should never be saved to GitHUB as it contains passwords.
+The `./server/resources/app.properties` should never be saved to GitHUB as it contains passwords.
 You should create it on the deployment machine, or locally for testing.
 
 
@@ -37,7 +37,7 @@ Login to the deployment server (in this case DEV) and get the latest version of 
 # Access the server, switch accounts and go to the server directory
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.dev.hubmapconsortium.org
 $ sudo /bin/su - hive
-$ cd /opt/hubmap
+$ cd /opt/hubmap/spatial-api
 $ pwd
 /home/centos/hubmap/spatial-api
 $ git checkout main
@@ -122,7 +122,7 @@ You can use `docker images` to confirm this.
 $ docker pull hubmap/spatial-api:1.0.0
 ````
 
-For DEV, you can use `latest` take rather than the `1.0.0` tag above.
+For DEV, you can use `latest` take rather than the `1.0.0` tag above, or what ever the current tag is in the file ./VERSION.
 
 Determine the current image version. This will show you which Docker image the process is running under.
 If the process has stopped for some reason you should try `docker images`.
@@ -132,33 +132,18 @@ CONTAINER ID        IMAGE                       COMMAND                  CREATED
 407cbcc4d15d        hubmap/spatial-api:1.0.0    "/usr/local/bin/entr…"   3 weeks ago         Up 3 weeks (healthy)    0.0.0.0:5000->5000/tcp         spatial-api
 ...
 ````
-Stop the process associated with container (Docker image) and delete it.
+Stop the process associated with container (Docker image), delete it. Then build and deploy it.
 ````bash
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@18.205.215.12
 $ sudo /bin/su - centos
 $ cd hubmap/spatial-api
 $ git checkout main
 $ git pull
-$ docker-compose -f docker-compose.db.deployment.yml down --rmi all
-$ docker-compose -f docker-compose.db.deployment.yml up --build -d
+$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.api.deployment.yml down --rmi all
+$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.api.deployment.yml up -d --no-build
 $ docker ps
 CONTAINER ID   IMAGE                     COMMAND                  CREATED          STATUS           PORTS                                        NAMES
 aa0b6676c615   spatial-api_spatial_db    "docker-entrypoint.s…"   28 seconds ago   Up 28 seconds    0.0.0.0:5432->5432/tcp, :::5432->5432/tcp    spatial_db
-
-
-
-$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.deployment.yml down --rmi all
-````
-Start the new container using the image just pulled from DockerHub.
-````bash
-$ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.deployment.yml up -d --no-build
-````
-
-Make sure that the new images has started.
-````bash
-$ docker ps
-CONTAINER ID        IMAGE                       COMMAND                  CREATED             STATUS                            PORTS                       NAMES
-5c0bdb68bd22        hubmap/spatial-api:1.0.0    "/usr/local/bin/entr…"   6 seconds ago       Up 4 seconds (health: starting)   0.0.0.0:5000->5000/tcp      spatial-api
 ````
 
 The production version of the server should be running at...
