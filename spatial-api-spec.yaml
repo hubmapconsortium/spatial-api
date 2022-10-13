@@ -13,7 +13,7 @@ servers:
   - url: 'https://spatial.api.hubmapconsortium.org'
 
 paths:
-  '/search/hubmap_id/{hubmap_id}/radius/{radius}/target/{target}':
+  '/search/hubmap-id/{hubmap_id}/radius/{radius}/target/{target}':
     get:
       summary: List the hubmap_ids associated with the target body that are located within the radius of the centroid of the hubmap_id specified
       operationId: search_hubmap_id_to_radius
@@ -50,7 +50,7 @@ paths:
           description: Parameter is incorrect or incorrectly formed
         '404':
           description: No HubMAP IDs were found
-  '/spatial-search/hubmap_id':
+  '/spatial-search/hubmap-id':
     post:
       summary: List the hubmap_ids (with samples having the cell_type) associated with the target body that are located within the radius of the centroid of the hubmap_id specified
       operationId: spatial_search_hubmap_id
@@ -90,6 +90,60 @@ paths:
           description: Parameter is incorrect or incorrectly formed
         '404':
           description: No HubMAP IDs were found
+  '/status':
+    get:
+      summary: Get the status of the server
+      operationId: get_status
+      responses:
+        '200':
+          description: List of HubMAP IDs that meet the radius and target criteria given
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+  '/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code':
+    put:
+      summary: Ask ingest-api to begin computations on cell type count information
+      operationId: begin_extract_cell_type_counts_for_all_samples_for_organ_code
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeginCellTypeCountRequest'
+      responses:
+        '202':
+          description: Accepted for Processing
+  '/sample/extracted-cell-type-counts-from-secondary-analysis-files':
+    put:
+      summary: The sample cell type counts are returned by a thread processing them from a queue
+      operationId: sample_extracted_cell_type_counts_from_secondary_analysis_files
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractedCellTypeCountsRequest'
+      responses:
+        '202':
+          description: Accepted for Processing
+  '/db/rebuild/annotation-details':
+    put:
+      summary: Rebuild the tables containing the annotation details
+      operationId: db_rebuild_annotation_details
+      responses:
+        '200':
+          description: Processed
+  '/db/rebuild/organ-sample-data':
+    put:
+      summary: Rebuild the sample data for the organ code given
+      operationId: db_rebuild_organ_sample_data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BeginCellTypeCountRequest'
+      responses:
+        '200':
+          description: Done
 components:
   schemas:
     HubMAPIds:
@@ -134,3 +188,26 @@ components:
         z:
           type: number
           example: 20
+    StatusResponse:
+      type: object
+      properties:
+        version:
+          type: string
+          example: 1.0.0
+        build:
+          type: string
+          example: build
+    BeginCellTypeCountRequest:
+      type: object
+      properties:
+        organ_code:
+          type: string
+          example: RK
+    ExtractedCellTypeCountsRequest:
+      type: object
+      properties:
+        sample_uuid:
+          type: string
+          example: 1.0.0
+        cell_type_counts:
+          type: object
