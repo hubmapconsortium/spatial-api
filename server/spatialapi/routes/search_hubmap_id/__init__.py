@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 search_hubmap_id_to_radius_blueprint = Blueprint('search_hubmap_id_to_radius_blueprint', __name__)
 
 
-@search_hubmap_id_to_radius_blueprint.route('/search/hubmap_id/<id>/radius/<r>/target/<t>', methods=['GET'])
+@search_hubmap_id_to_radius_blueprint.route('/search/hubmap-id/<id>/radius/<r>/target/<t>', methods=['GET'])
 def search_hubmap_id_to_radius(id, r, t):
-    logger.info(f'search_hubmap_id_to_radius: GET /search/hubmap_id/{id}/radius/{r}/target/{t}')
+    logger.info(f'search_hubmap_id_to_radius: GET /search/hubmap-id/{id}/radius/{r}/target/{t}')
     parameter_validation(r, t)
 
     #replace by the correct way to check token validity.
@@ -34,6 +34,7 @@ def search_hubmap_id_to_radius(id, r, t):
     response = make_response(jsonify(hubmap_ids=results), 200)
     response.headers["Content-Type"] = "application/json"
     return response
+
 
 def parameter_validation(radius, target: str) -> None:
     target_values: list = ['VHMale', 'VHFemale']

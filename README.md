@@ -181,9 +181,9 @@ You will not need to create the tables on the PostgreSQL database that is runnin
 as this is done when the database starts up as it by default reads the file `db/initdb.d/initdb.sql`.
 
 
-# Adding new endpoints
+# Adding New Endpoints
 
-An endpoint should be created in a Python module with its name (e.g., `server/spatialapi/new_endpoint/__init__.py`).
+An endpoint should be created in a Python module using Blueprint with its name (e.g., `server/spatialapi/routes/new_endpoint/__init__.py`).
 It should then be registered in the `server/__init__.py` file.
 
 ## OpenAPI Spec
@@ -195,6 +195,10 @@ The specification .yml file should be found at the top lever of the project, and
 
 All of the HubMAP APIs are found [here](https://smart-api.info/registry?q=hubmap).
 They are reloaded from the `master` branch specification .yml file sometime after midnight Eastern Time US.
+
+### Registering Endpoints
+All endpoints should be registered in the `AWS API Gateway`.
+Currently this is a manual process.
 
 ## Method Verification Data
 
@@ -276,8 +280,8 @@ You can then use `translation` and `rotation` to further place it in the space.
 The following will allow you to connect to the database host, destroy the database and rebuild the table structure and stored procedures...
 ````bash
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@18.205.215.12
-$ sudo /bin/su - centos
-$ cd hubmap/spatial-api
+$ sudo /bin/su - hive
+$ cd /opt/hubmap/spatial-api
 $ git checkout main
 $ git pull
 $ docker-compose -f docker-compose.db.deployment.yml down --rmi all
@@ -287,28 +291,19 @@ CONTAINER ID   IMAGE                     COMMAND                  CREATED       
 aa0b6676c615   spatial-api_spatial_db    "docker-entrypoint.s…"   28 seconds ago   Up 28 seconds    0.0.0.0:5432->5432/tcp, :::5432->5432/tcp    spatial_db
 ````
 
-The following script will allow you to load data into the database. This will actually run several scripts.
-````bash
-$ ./scripts/create_dev_db.sh
-````
+The following script will allow you to load data into the database.
+It will access the spatial-api server and execute several endpoints
+that will allow for the rebuilding of the: annotation details,
+organ-sample-data (RK & LK), and the cell type counts.
 
-Before running the above script you will need to have processed the `data.json` file at the PSC.
-
-The following will allow you to build the `data.json` file, copy it to the PSC along with an
-environment that is used to process the PSC files mentioned in the `data.json`.
+To get the BEARER_TOKEN using Firefox open a "New Private Window".
+Then access the Developer Tool (Tools > Browser Tools > Web Developer Tools).
+Login through the [UI](https://portal.hubmapconsortium.org/).
+Examine the Request Header > Authorization, of the search-api calls.
+The very long string following the text BEARER <sp> is what you want.
+After you copy that string close the web browser.
 ````bash
-$ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/tissue_sample_cell_type_manager.py -b BEARER_TOKEN -C $CONFIG)
-````
-
-Next you need to connect to the PSC host and process the `data.json` file.
-These steps will create a `data_out.json` file that will be used in the `create_dev_db.sh` file above.
-````bash
-$ ssh kollar@hive.psc.edu
-$ ssh kollar@hivevm191.psc.edu
-$ cd ~/bin/psc
-$ ./mkvenv.sh
-$ source ./venv/bin/activate
-$ ./test.py
+$ ./scripts/db_rebuild.sh -H https://spatial-api.dev.hubmapconsortium.org -t BEARER_TOKEN
 ````
 
 ## Deploy Server

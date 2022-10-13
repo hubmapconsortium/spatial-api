@@ -32,6 +32,7 @@ def spatial_search_point():
     response.headers["Content-Type"] = "application/json"
     return response
 
+
 def request_validation(request_dict: dict) -> None:
     numeric_instances_keys: tuple = ('radius', 'x', 'y', 'z')
     required_request_keys: tuple = numeric_instances_keys + ('target',)

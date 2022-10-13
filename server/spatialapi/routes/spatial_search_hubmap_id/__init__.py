@@ -11,10 +11,10 @@ logger = logging.getLogger(__name__)
 spatial_search_hubmap_id_blueprint = Blueprint('spatial_search_hubmap_id_blueprint', __name__)
 
 
-@spatial_search_hubmap_id_blueprint.route('/spatial-search/hubmap_id', methods=['POST'])
+@spatial_search_hubmap_id_blueprint.route('/spatial-search/hubmap-id', methods=['POST'])
 def spatial_search_hubmap_id():
     request_dict: dict = request.get_json()
-    logger.info(f'spatial_search: POST /spatial-search/hubmap_id {request_dict}')
+    logger.info(f'spatial_search_hubmap_id: POST /spatial-search/hubmap-id {request_dict}')
     request_validation(request_dict)
 
     config = configparser.ConfigParser()
@@ -37,6 +37,7 @@ def spatial_search_hubmap_id():
     response = make_response(jsonify(hubmap_ids=results), HTTPStatus.OK)
     response.headers["Content-Type"] = "application/json"
     return response
+
 
 def request_validation(request_dict: dict) -> None:
     int_instances_keys: tuple = ("radius", )

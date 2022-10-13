@@ -17,11 +17,11 @@ sample_extracted_cell_count_blueprint =\
 
 
 @sample_extract_cell_type_count_blueprint.route(
-    '/sample/begin-extract-cell-type-counts-for-all-samples-for-organ_code',
+    '/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code',
     methods=['PUT'])
 def begin_extract_cell_type_counts_for_all_samples_for_organ_code():
     request_dict: dict = request.get_json()
-    logger.info(f' PUT sample/begin-extract-cell-type-counts-for-all-samples-for-organ_code {request_dict}')
+    logger.info(f' PUT sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code {request_dict}')
     if 'organ_code' not in request_dict:
         abort(json_error("Request Body: the attribute 'organ_code' must be included in request parameters",
                          HTTPStatus.BAD_REQUEST))

@@ -50,7 +50,7 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
 
 echo
 echo ">>> Extract cell_type_counts for samples of; organ_code: RK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ_code" \
+curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
  -H "Authorization: Bearer $BEARER_TOKEN" \
  -H "Content-Type: application/json" \
  -d "{\"organ_code\": \"RK\"}"
@@ -64,7 +64,7 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
 
 echo
 echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ_code" \
+curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
  -H "Authorization: Bearer $BEARER_TOKEN" \
  -H "Content-Type: application/json" \
  -d "{\"organ_code\": \"LK\"}"
