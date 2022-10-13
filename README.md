@@ -135,8 +135,8 @@ CONTAINER ID        IMAGE                       COMMAND                  CREATED
 Stop the process associated with container (Docker image), delete it. Then build and deploy it.
 ````bash
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@18.205.215.12
-$ sudo /bin/su - centos
-$ cd hubmap/spatial-api
+$ sudo /bin/su - hive
+$ cd /opt/hubmap/spatial-api
 $ git checkout main
 $ git pull
 $ export SPATIAL_API_VERSION=1.0.0; docker-compose -f docker-compose.api.deployment.yml down --rmi all
@@ -311,8 +311,8 @@ $ ./scripts/db_rebuild.sh -H https://spatial-api.dev.hubmapconsortium.org -t BEA
 Connect to the server host, destroy the old image, build and redeploy.
 ````bash
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.dev.hubmapconsortium.org
-$ sudo /bin/su - centos
-$ cd hubmap/spatial-api
+$ sudo /bin/su - hive
+$ cd /opt/hubmap/spatial-api
 $ git checkout main
 $ git pull
 $ export SPATIAL_API_VERSION=latest; docker-compose -f docker-compose.api.deployment.yml down --rmi all
