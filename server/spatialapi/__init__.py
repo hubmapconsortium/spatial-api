@@ -27,9 +27,9 @@ def create_app(testing=False):
     app.register_blueprint(spatial_search_point_blueprint)
     app.register_blueprint(status_blueprint)
 
-    @app.route("/")
+    @app.route("/", methods=['GET'])
     def hello():
-        return "Hello World!"
+        return "Hello! This is HuBMAP Spatial API service :)"
 
     @app.before_request
     def before_request():

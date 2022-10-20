@@ -12,5 +12,6 @@ def get_status():
         # Use strip() to remove leading and trailing spaces, newlines, and tabs
         'version': (Path(__file__).absolute().parent.parent.parent.parent / 'VERSION').read_text().strip(),
         'build': (Path(__file__).absolute().parent.parent.parent.parent / 'BUILD').read_text().strip()
+    # TODO: Add a check that the database is up and running...
     }
     return jsonify(status_data)
