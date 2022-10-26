@@ -24,6 +24,8 @@ services:
     volumes:
       - ./server/resources/app.properties:/app/server/resources/app.properties
       - ./server/log:/app/server/log
+      - ./VERSION:/app/server/VERSION
+      - ./BUILD:/app/server/BUILD
 
 networks:
   gateway_hubmap:

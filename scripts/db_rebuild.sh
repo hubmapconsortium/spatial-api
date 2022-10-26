@@ -42,31 +42,42 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/annotation-details" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
 echo
-echo ">>> Rebuild organ-sample-data; organ_code: RK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
- -H "Authorization: Bearer $BEARER_TOKEN" \
- -H "Content-Type: application/json" \
- -d "{\"organ_code\": \"RK\"}"
-
-echo
 echo ">>> Extract cell_type_counts for samples of; organ_code: RK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
- -H "Authorization: Bearer $BEARER_TOKEN" \
- -H "Content-Type: application/json" \
- -d "{\"organ_code\": \"RK\"}"
-
-echo
-echo ">>> Rebuild organ-sample-data; organ_code: LK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
- -H "Authorization: Bearer $BEARER_TOKEN" \
- -H "Content-Type: application/json" \
- -d "{\"organ_code\": \"LK\"}"
+curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organ_code/RK/reindex" \
+ -H "Authorization: Bearer $BEARER_TOKEN"
 
 echo
 echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
-curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
- -H "Authorization: Bearer $BEARER_TOKEN" \
- -H "Content-Type: application/json" \
- -d "{\"organ_code\": \"LK\"}"
+curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organ_code/LK/reindex" \
+ -H "Authorization: Bearer $BEARER_TOKEN"
+
+
+#echo
+#echo ">>> Rebuild organ-sample-data; organ_code: RK..."
+#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
+# -H "Authorization: Bearer $BEARER_TOKEN" \
+# -H "Content-Type: application/json" \
+# -d "{\"organ_code\": \"RK\"}"
+#
+#echo
+#echo ">>> Extract cell_type_counts for samples of; organ_code: RK..."
+#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
+# -H "Authorization: Bearer $BEARER_TOKEN" \
+# -H "Content-Type: application/json" \
+# -d "{\"organ_code\": \"RK\"}"
+#
+#echo
+#echo ">>> Rebuild organ-sample-data; organ_code: LK..."
+#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/db/rebuild/organ-sample-data" \
+# -H "Authorization: Bearer $BEARER_TOKEN" \
+# -H "Content-Type: application/json" \
+# -d "{\"organ_code\": \"LK\"}"
+#
+#echo
+#echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
+#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/sample/begin-extract-cell-type-counts-for-all-samples-for-organ-code" \
+# -H "Authorization: Bearer $BEARER_TOKEN" \
+# -H "Content-Type: application/json" \
+# -d "{\"organ_code\": \"LK\"}"
 
 # At this point you can add any other organ_codes....

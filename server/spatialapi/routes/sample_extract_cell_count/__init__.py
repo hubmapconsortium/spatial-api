@@ -2,10 +2,9 @@ from flask import Blueprint, request, abort, Response
 import configparser
 from http import HTTPStatus
 import logging
-import string
 
 from spatialapi.manager.cell_type_count_manager import CellTypeCountManager
-from spatialapi.utils import json_error
+from spatialapi.utils import json_error, sample_uuid_validation
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def begin_extract_cell_type_counts_for_all_samples_for_organ_code():
     methods=['PUT'])
 def begin_extract_all_cell_type_counts_for_sample_uuid(sample_uuid: str):
     logger.info(f' PUT /sample/begin-extract-cell-type-counts-for/sample-uuid/{sample_uuid}')
-    parameter_validation(sample_uuid)
+    sample_uuid_validation(sample_uuid)
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'
@@ -91,10 +90,3 @@ def sample_extracted_cell_type_counts_from_secondary_analysis_files():
     cell_type_count_manager.sample_extracted_cell_type_counts_from_secondary_analysis_files(sample_uuid, cell_type_counts)
 
     return Response("Processing has been initiated", HTTPStatus.ACCEPTED)
-
-
-def parameter_validation(uuid: str) -> None:
-    if not all(c in string.hexdigits for c in uuid):
-        abort(json_error(f"The 'sample-uuid' ({uuid}) must contain only hex digits", HTTPStatus.BAD_REQUEST))
-    if len(uuid) != 32:
-        abort(json_error(f"The 'sample-uuid' ({uuid}) must contain exactly 32 hex digits", HTTPStatus.BAD_REQUEST))

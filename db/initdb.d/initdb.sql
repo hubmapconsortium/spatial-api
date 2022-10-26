@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS cell_annotation_details_marker (
 );
 
 -- This table holds a row per cell type per sample.
+-- Deletions from the sample table will delete corresponding rows in this table.
 -- The cell information can be found in the secondary_analysis.h5ad files in the associated datasets (at the PSC)
 DROP TABLE IF EXISTS cell_types;
 CREATE TABLE IF NOT EXISTS cell_types (

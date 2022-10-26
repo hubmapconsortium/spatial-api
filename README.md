@@ -38,8 +38,6 @@ Login to the deployment server (in this case DEV) and get the latest version of 
 $ ssh -i ~/.ssh/id_rsa_e2c.pem cpk36@ingest.dev.hubmapconsortium.org
 $ sudo /bin/su - hive
 $ cd /opt/hubmap/spatial-api
-$ pwd
-/home/centos/hubmap/spatial-api
 $ git checkout main
 $ git status
 # On branch main

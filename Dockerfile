@@ -17,7 +17,6 @@ COPY server/spatialapi spatialapi
 #ENV PYTHONPATH="${PYTHONPATH}:/app/server"
 COPY server/uwsgi.ini .
 COPY server/wsgi.py .
-COPY VERSION .
 
 # The EXPOSE instruction informs Docker that the container listens on the specified network ports at runtime.
 # EXPOSE does not make the ports of the container accessible to the hos

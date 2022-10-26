@@ -36,6 +36,16 @@ class SampleLoadManager(object):
     def insert_sample_data(self, rec: dict) -> None:
         try:
             cursor = self.postgresql_manager.new_cursor()
+            sample_uuid: str = rec['sample']['uuid']
+
+            # This also deletes the rows in 'cell_types' that contain 'sample_uuid' because
+            # of the REFERENCES sample (sample_uuid) ON DELETE CASCADE
+            delete_existing_cell_type_data: str =\
+                f"DELETE FROM cell_types WHERE sample_uuid='{sample_uuid}';"
+            cursor.execute(delete_existing_cell_type_data)
+            delete_existing_sample_data: str =\
+                f"DELETE FROM sample WHERE sample_uuid='{sample_uuid}';"
+            cursor.execute(delete_existing_sample_data)
 
             sql_upsert_placement_relative_to_organ_code: str = \
                 self.spatial_manager.create_sample_rec_sql_upsert(rec['organ']['code'], rec)
