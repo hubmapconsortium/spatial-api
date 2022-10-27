@@ -21,7 +21,7 @@ usage()
   echo " -s              - Rebuild Server"
   echo " -D              - Shutdown and destroy both containers and then exit"
   echo " -t              - Run the Tests after bringing up the containers"
-  echo " -h              -Help"
+  echo " -h              - Help"
   exit 2
 }
 
