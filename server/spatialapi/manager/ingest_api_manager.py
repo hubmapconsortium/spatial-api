@@ -35,8 +35,8 @@ class IngestApiManager(object):
         cell_type_count for the data sets given (ds_uuids). This involves ingest-api putting the request into a queue,
         and have it acted upon at a later time. So, the end point called here in ingest-api just returns a 202
         (I'm working on it). The thread that does the data processing in ingest-api will return the data to spacial-api
-        through an endpoint found in routes/sample_extract_cell_count
-        PUT /sample/extracted-cell-count-from-secondary-analysis-files.
+        through an endpoint found in routes/samples_extracted_cell_count
+        PUT /samples/extracted-cell-type-counts-from-secondary-analysis-files.
         """
         ingest_uri: str = f'{self.ingest_api_url}/dataset/begin-extract-cell-count-from-secondary-analysis-files-async'
         headers: dict = {
@@ -55,23 +55,3 @@ class IngestApiManager(object):
         else:
             abort(json_error(f"begin_extract_cell_count_from_secondary_analysis_files: url: {ingest_uri} with ds_uuids:{','.join(str(i) for i in ds_uuids)}",
                              response.status_code))
-
-    def extract_cell_count_from_secondary_analysis_files(self,
-                                                         bearer_token: str,
-                                                         ds_uuids: List[str]) -> dict:
-        """ This endpoint is deprecated because it asks ingest-api to run the code to gather the cell_counts
-        in real time. This could take several minutes, and so this could timeout. It should not be used.
-        """
-        ingest_uri: str = f'{self.ingest_api_url}/dataset/extract-cell-count-from-secondary-analysis-files'
-        headers: dict = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer %s" % bearer_token
-        }
-        request: dict = {'ds_uuids': ds_uuids}
-        request_json = json.dumps(request)
-        logger.info(f"extract_cell_count_from_secondary_analysis_files; headers: {headers} request: {request_json}")
-        response: str = requests.post(ingest_uri, headers=headers, json=request)
-        if response.status_code != 200:
-            abort(json_error(f"extract_cell_count_from_secondary_analysis_files: ds_uuids:{','.join(str(i) for i in ds_uuids)}",
-                             response.status_code))
-        return response.json()

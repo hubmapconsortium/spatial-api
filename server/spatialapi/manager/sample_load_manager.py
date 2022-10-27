@@ -24,14 +24,6 @@ class SampleLoadManager(object):
         self.postgresql_manager.close()
         self.spatial_manager.close()
 
-    # Called from PUT '/db/rebuild/organ-sample-data' Request: {'organ_code': RK}
-    def insert_organ_data(self, organ_code: str) -> None:
-        logger.info(f"Inserting data for organ: {organ_code}")
-        recs: List[dict] = self.neo4j_manager.query_organ(organ_code)
-        logger.debug(f"Records found for organ: {len(recs)}")
-        for rec in recs:
-            self.insert_sample_data(rec)
-
     # NOTE: This does not handle cell_type_counts
     def insert_sample_data(self, rec: dict) -> None:
         try:

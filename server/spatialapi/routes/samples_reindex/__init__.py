@@ -11,7 +11,7 @@ from spatialapi.utils import json_error, sample_uuid_validation
 
 logger = logging.getLogger(__name__)
 
-sample_reindex_blueprint = Blueprint('sample_reindex_blueprint', __name__)
+samples_reindex_blueprint = Blueprint('samples_reindex_blueprint', __name__)
 
 
 def sample_rec_reindex(rec, config, bearer_token) -> None:
@@ -29,8 +29,9 @@ def sample_rec_reindex(rec, config, bearer_token) -> None:
         sample_load_manager.close()
         cell_type_count_manager.close()
 
-@sample_reindex_blueprint.route('/samples/sample_uuid/<sample_uuid>/reindex', methods=['PUT'])
-def sample_sample_uuid_reindex(sample_uuid):
+
+@samples_reindex_blueprint.route('/samples/sample_uuid/<sample_uuid>/reindex', methods=['PUT'])
+def samples_sample_uuid_reindex(sample_uuid):
     logger.info(f'sample_reindex: PUT /samples/sample_uuid/{sample_uuid}/reindex')
     sample_uuid_validation(sample_uuid)
 
@@ -61,8 +62,8 @@ def sample_sample_uuid_reindex(sample_uuid):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
-@sample_reindex_blueprint.route('/samples/organ_code/<organ_code>/reindex', methods=['PUT'])
-def sample_organ_code_reindex(organ_code):
+@samples_reindex_blueprint.route('/samples/organ_code/<organ_code>/reindex', methods=['PUT'])
+def samples_organ_code_reindex(organ_code):
     logger.info(f'sample_reindex: PUT /samples//organ_code{organ_code}/reindex')
 
     config = configparser.ConfigParser()

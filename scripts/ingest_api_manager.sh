@@ -28,7 +28,6 @@ usage()
 # $ ./scripts/ingest_api_manager.sh -d 4a4c98d9dd27afd652cdab74f9952bf1 -t TOKEN
 # $ ./scripts/ingest_api_manager.sh -H https://ingest-api.dev.hubmapconsortium.org -d 4a4c98d9dd27afd652cdab74f9952bf1 -t TOKEN
 #
-# NOTE: See sample_extract_cell_count.sh for a list of local sample and dataset uuids.
 
 while getopts H:t:d:s:vh arg; do
   case $arg in

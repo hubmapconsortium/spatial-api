@@ -2,8 +2,8 @@ from flask import Flask, jsonify, g
 import logging
 import time
 
-from spatialapi.routes.db_rebuild import db_rebuild_blueprint
-from spatialapi.routes.sample_extract_cell_count import sample_extract_cell_type_count_blueprint, sample_extracted_cell_count_blueprint
+from spatialapi.routes.db_rebuild_annotation_details import db_rebuild_annotation_details_blueprint
+from spatialapi.routes.samples_extracted_cell_count import samples_extracted_cell_count_blueprint
 from spatialapi.routes.sample_reindex import sample_reindex_blueprint
 from spatialapi.routes.search_hubmap_id import search_hubmap_id_to_radius_blueprint
 from spatialapi.routes.spatial_search_hubmap_id import spatial_search_hubmap_id_blueprint
@@ -20,9 +20,8 @@ def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
     app.debug = True  # Enable reloader and debugger
 
-    app.register_blueprint(db_rebuild_blueprint)
-    app.register_blueprint(sample_extract_cell_type_count_blueprint)
-    app.register_blueprint(sample_extracted_cell_count_blueprint)
+    app.register_blueprint(db_rebuild_annotation_details_blueprint)
+    app.register_blueprint(samples_extracted_cell_count_blueprint)
     app.register_blueprint(sample_reindex_blueprint)
     app.register_blueprint(search_hubmap_id_to_radius_blueprint)
     app.register_blueprint(spatial_search_hubmap_id_blueprint)
