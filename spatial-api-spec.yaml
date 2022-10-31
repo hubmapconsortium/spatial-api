@@ -32,16 +32,23 @@ paths:
       responses:
         '202':
           description: Accepted for Processing
+  '/samples/all/reindex':
+    put:
+      summary: For all samples, delete the old sample information and replace it by processing the current data
+      operationId: samples_sample_uuid_reindex
+      responses:
+        '202':
+          description: Accepted for Processing
   '/samples/sample_uuid/{sample_uuid}/reindex':
     put:
-      summary: Delete the old sample information and replace it by processing the current data
+      summary: For the sample_uuid given, delete the old sample information and replace it by processing the current data
       operationId: samples_sample_uuid_reindex
       responses:
         '202':
           description: Accepted for Processing
   '/samples/organ_code/<organ_code>/reindex':
     put:
-      summary: Delete all old samples associated with the organ and replace by processing current sample data for that organ
+      summary: For all samples associated with the organ_code, delete the old sample information and replace it by processing the current data
       operationId: samples_organ_code_reindex
       responses:
         '202':

@@ -64,7 +64,7 @@ def samples_sample_uuid_reindex(sample_uuid):
 
 @samples_reindex_blueprint.route('/samples/organ_code/<organ_code>/reindex', methods=['PUT'])
 def samples_organ_code_reindex(organ_code):
-    logger.info(f'sample_reindex: PUT /samples//organ_code{organ_code}/reindex')
+    logger.info(f'sample_reindex: PUT /samples/organ_code{organ_code}/reindex')
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'
@@ -83,6 +83,35 @@ def samples_organ_code_reindex(organ_code):
         logger.info(f"Inserting data for organ: {organ_code}")
         recs: List[dict] = neo4j_manager.query_organ(organ_code)
         logger.debug(f"Records found for organ: {len(recs)}")
+        for rec in recs:
+            sample_rec_reindex(rec, config, bearer_token)
+    finally:
+        neo4j_manager.close()
+
+    # Because it will take time for the cell_type_counts to be processed...
+    return make_response('Processing begun', HTTPStatus.ACCEPTED)
+
+
+@samples_reindex_blueprint.route('/samples/all/reindex', methods=['PUT'])
+def samples_organ_code_reindex():
+    logger.info(f'sample_reindex: PUT /samples/all/reindex')
+
+    config = configparser.ConfigParser()
+    app_properties: str = 'resources/app.properties'
+    logger.info(f'Reading properties file: {app_properties}')
+    config.read(app_properties)
+
+    bearer: str = request.headers.get('Authorization', None)
+    if bearer is None or len(bearer.split()) != 2:
+        return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
+    bearer_token = bearer.split()[1]
+    logger.info(f"Bearer Token: {bearer_token}")
+
+    try:
+        neo4j_manager = Neo4jManager(config)
+
+        recs: List[dict] = neo4j_manager.query_all()
+        logger.debug(f"Records found: {len(recs)}")
         for rec in recs:
             sample_rec_reindex(rec, config, bearer_token)
     finally:
