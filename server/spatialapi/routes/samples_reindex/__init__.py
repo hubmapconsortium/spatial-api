@@ -93,7 +93,7 @@ def samples_organ_code_reindex(organ_code):
 
 
 @samples_reindex_blueprint.route('/samples/all/reindex', methods=['PUT'])
-def samples_organ_code_reindex():
+def samples_all_reindex():
     logger.info(f'sample_reindex: PUT /samples/all/reindex')
 
     config = configparser.ConfigParser()
