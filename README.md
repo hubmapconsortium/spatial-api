@@ -198,6 +198,12 @@ They are reloaded from the `master` branch specification .yml file sometime afte
 All endpoints should be registered in the `AWS API Gateway`.
 Currently this is a manual process.
 
+The urls are as follows:
+[DEV](https://spatial-api.dev.hubmapconsortium.org/),
+[TEST](https://spatial-api.test.hubmapconsortium.org/),
+[STAGE](https://spatial-api.stage.hubmapconsortium.org/),
+[PROD](https://spatial-api.hubmapconsortium.org/).
+
 ## Method Verification Data
 
 It was important to verify that the manner in which we are loading spatial data into the `sample` table produces
