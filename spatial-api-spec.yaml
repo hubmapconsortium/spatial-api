@@ -46,7 +46,7 @@ paths:
       responses:
         '202':
           description: Accepted for Processing
-  '/samples/organ/<organ_code>/reindex':
+  '/samples/organs/<organ_code>/reindex':
     put:
       summary: For all samples associated with the organ_code, delete the old sample information and replace it by processing the current data
       operationId: samples_organ_code_reindex
