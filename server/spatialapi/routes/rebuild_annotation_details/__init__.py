@@ -6,12 +6,12 @@ from spatialapi.manager.cell_annotation_manager import CellAnnotationManager
 
 logger = logging.getLogger(__name__)
 
-db_rebuild_annotation_details_blueprint = Blueprint('endpoints for rebuilding the database', __name__)
+rebuild_annotation_details_blueprint = Blueprint('Rebuild the annotation details', __name__)
 
 
-@db_rebuild_annotation_details_blueprint.route('/db/rebuild/annotation-details', methods=['PUT'])
-def db_rebuild_annotation_details():
-    logger.info(f'db_rebuild_annotation_details: PUT /db/rebuild/annotation-details')
+@rebuild_annotation_details_blueprint.route('/rebuild-annotation-details', methods=['PUT'])
+def rebuild_annotation_details():
+    logger.info(f'rebuild_annotation_details: PUT /rebuild-annotation-details')
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'

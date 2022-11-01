@@ -338,11 +338,11 @@ The following will run tests against the dev server:
 ````bash
 $ ./scripts/search_hubmap_id.sh -H https://spatial-api.dev.hubmapconsortium.org
 $ ./scripts/spatial_search_hubmap_id.sh -H https://spatial-api.dev.hubmapconsortium.org
-$ ./scripts/spatial_search_point.sh -H https://spatial-api.dev.hubmapconsortium.org
+$ ./scripts/point_search.sh -H https://spatial-api.dev.hubmapconsortium.org
 ````
 By default the tests run agains `http://localhost:5001`
 ````bash
 $ ./scripts/search_hubmap_id.sh
 $ ./scripts/spatial_search_hubmap_id.sh 
-$ ./scripts/spatial_search_point.sh
+$ ./scripts/point_search.sh
 ````

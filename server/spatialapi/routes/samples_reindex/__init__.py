@@ -30,9 +30,9 @@ def sample_rec_reindex(rec, config, bearer_token) -> None:
         cell_type_count_manager.close()
 
 
-@samples_reindex_blueprint.route('/samples/sample_uuid/<sample_uuid>/reindex', methods=['PUT'])
-def samples_sample_uuid_reindex(sample_uuid):
-    logger.info(f'sample_reindex: PUT /samples/sample_uuid/{sample_uuid}/reindex')
+@samples_reindex_blueprint.route('/samples/<sample_uuid>/reindex', methods=['PUT'])
+def samples_reindex(sample_uuid):
+    logger.info(f'samples_reindex: PUT /samples/{sample_uuid}/reindex')
     sample_uuid_validation(sample_uuid)
 
     config = configparser.ConfigParser()
@@ -62,9 +62,9 @@ def samples_sample_uuid_reindex(sample_uuid):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
-@samples_reindex_blueprint.route('/samples/organ_code/<organ_code>/reindex', methods=['PUT'])
-def samples_organ_code_reindex(organ_code):
-    logger.info(f'sample_reindex: PUT /samples/organ_code{organ_code}/reindex')
+@samples_reindex_blueprint.route('/samples/organs/<organ_code>/reindex', methods=['PUT'])
+def samples_organs_reindex(organ_code):
+    logger.info(f'samples_organs_reindex: PUT /samples/organs/{organ_code}/reindex')
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'
@@ -92,9 +92,9 @@ def samples_organ_code_reindex(organ_code):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
-@samples_reindex_blueprint.route('/samples/all/reindex', methods=['PUT'])
-def samples_all_reindex():
-    logger.info(f'sample_reindex: PUT /samples/all/reindex')
+@samples_reindex_blueprint.route('/samples/reindex-all', methods=['PUT'])
+def samples_reindex_all():
+    logger.info(f'samples_reindex_all: PUT /samples/reindex-all')
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'

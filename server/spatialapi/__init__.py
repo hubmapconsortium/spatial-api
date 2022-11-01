@@ -2,12 +2,12 @@ from flask import Flask, jsonify, g
 import logging
 import time
 
-from spatialapi.routes.db_rebuild_annotation_details import db_rebuild_annotation_details_blueprint
-from spatialapi.routes.samples_extracted_cell_count import samples_extracted_cell_count_blueprint
+from spatialapi.routes.point_search import point_search_blueprint
+from spatialapi.routes.rebuild_annotation_details import rebuild_annotation_details_blueprint
+from spatialapi.routes.samples_cell_type_counts import samples_cell_type_counts_blueprint
 from spatialapi.routes.samples_reindex import samples_reindex_blueprint
 from spatialapi.routes.search_hubmap_id import search_hubmap_id_to_radius_blueprint
 from spatialapi.routes.spatial_search_hubmap_id import spatial_search_hubmap_id_blueprint
-from spatialapi.routes.spatial_search_point import spatial_search_point_blueprint
 from spatialapi.routes.status import status_blueprint
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s in %(module)s:%(lineno)d: %(message)s',
@@ -20,12 +20,12 @@ def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
     app.debug = True  # Enable reloader and debugger
 
-    app.register_blueprint(db_rebuild_annotation_details_blueprint)
-    app.register_blueprint(samples_extracted_cell_count_blueprint)
+    app.register_blueprint(point_search_blueprint)
+    app.register_blueprint(rebuild_annotation_details_blueprint)
+    app.register_blueprint(samples_cell_type_counts_blueprint)
     app.register_blueprint(samples_reindex_blueprint)
     app.register_blueprint(search_hubmap_id_to_radius_blueprint)
     app.register_blueprint(spatial_search_hubmap_id_blueprint)
-    app.register_blueprint(spatial_search_point_blueprint)
     app.register_blueprint(status_blueprint)
 
     @app.route("/", methods=['GET'])

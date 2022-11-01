@@ -35,8 +35,7 @@ class IngestApiManager(object):
         cell_type_count for the data sets given (ds_uuids). This involves ingest-api putting the request into a queue,
         and have it acted upon at a later time. So, the end point called here in ingest-api just returns a 202
         (I'm working on it). The thread that does the data processing in ingest-api will return the data to spacial-api
-        through an endpoint found in routes/samples_extracted_cell_count
-        PUT /samples/extracted-cell-type-counts-from-secondary-analysis-files.
+        through an endpoint found in routes/samples_cell_type_counts (PUT /samples/cell-type-counts).
         """
         ingest_uri: str = f'{self.ingest_api_url}/dataset/begin-extract-cell-count-from-secondary-analysis-files-async'
         headers: dict = {

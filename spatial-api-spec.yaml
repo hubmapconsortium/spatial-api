@@ -13,17 +13,17 @@ servers:
   - url: 'https://spatial.api.hubmapconsortium.org'
 
 paths:
-  '/db/rebuild/annotation-details':
+  '/rebuild-annotation-details':
     put:
       summary: Rebuild the tables containing the annotation details
-      operationId: db_rebuild_annotation_details
+      operationId: rebuild_annotation_details
       responses:
         '200':
           description: Processed
-  '/samples/extracted-cell-type-counts-from-secondary-analysis-files':
+  '/samples/cell-type-counts':
     put:
       summary: The sample cell type counts are returned by ingest-api
-      operationId: samples_extracted_cell_type_counts_from_secondary_analysis_files
+      operationId: samples_cell_type_counts
       requestBody:
         content:
           application/json:
@@ -32,24 +32,24 @@ paths:
       responses:
         '202':
           description: Accepted for Processing
-  '/samples/all/reindex':
+  '/samples/reindex-all':
     put:
       summary: For all samples, delete the old sample information and replace it by processing the current data
-      operationId: samples_all_reindex
+      operationId: samples_reindex_all
       responses:
         '202':
           description: Accepted for Processing
-  '/samples/sample_uuid/{sample_uuid}/reindex':
+  '/samples/{sample_uuid}/reindex':
     put:
       summary: For the sample_uuid given, delete the old sample information and replace it by processing the current data
-      operationId: samples_sample_uuid_reindex
+      operationId: samples_reindex
       responses:
         '202':
           description: Accepted for Processing
-  '/samples/organ_code/<organ_code>/reindex':
+  '/samples/organs/{organ_code}/reindex':
     put:
       summary: For all samples associated with the organ_code, delete the old sample information and replace it by processing the current data
-      operationId: samples_organ_code_reindex
+      operationId: samples_organs_reindex
       responses:
         '202':
           description: Accepted for Processing
@@ -110,10 +110,10 @@ paths:
           description: Parameter is incorrect or incorrectly formed
         '404':
           description: No HubMAP IDs were found
-  '/spatial-search/point':
+  '/point-search':
     post:
       summary: List the hubmap_ids associated with the target body that are located within the radius of the point <x, y, z>
-      operationId: spatial_search_point
+      operationId: point_search
       requestBody:
         content:
           application/json:

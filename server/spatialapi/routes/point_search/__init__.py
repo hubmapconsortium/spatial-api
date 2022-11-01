@@ -8,18 +8,18 @@ from spatialapi.utils import json_error
 
 logger = logging.getLogger(__name__)
 
-spatial_search_point_blueprint = Blueprint('spatial_search_point_blueprint', __name__)
+point_search_blueprint = Blueprint('point_search_blueprint', __name__)
 
 
-@spatial_search_point_blueprint.route('/spatial-search/point', methods=['POST'])
-def spatial_search_point():
+@point_search_blueprint.route('/point-search', methods=['POST'])
+def point_search():
     request_dict: dict = request.get_json()
-    logger.info(f'spatial_search: POST /spatial-search/point {request_dict}')
+    logger.info(f'point_search: POST /point-search {request_dict}')
     request_validation(request_dict)
 
     config = configparser.ConfigParser()
     app_properties: str = 'resources/app.properties'
-    logger.info(f'spatial_search: Reading properties file: {app_properties}')
+    logger.info(f'point_search: Reading properties file: {app_properties}')
     config.read(app_properties)
     spatial_manager = SpatialManager(config)
 

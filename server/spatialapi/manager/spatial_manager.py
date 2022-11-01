@@ -181,7 +181,7 @@ class SpatialManager(object):
         logger.debug(f"Creating sql upsert placement relative to body with placement: {rec_new}")
         return self.create_sample_rec_sql_upsert(target_iri, rec_new)
 
-    # Used by: "POST /spatial-search/point"
+    # Used by: "POST /point-search
     def find_relative_to_spatial_entry_iri_within_radius_from_point(self,
                                                                     spatial_entry_iri: str,
                                                                     radius: float,
