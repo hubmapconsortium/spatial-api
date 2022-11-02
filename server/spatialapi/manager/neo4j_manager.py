@@ -161,7 +161,7 @@ class Neo4jManager(object):
             " RETURN DISTINCT ds.uuid AS ds_uuid"
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
-            logger.info(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: results: {len(results)}')
+            logger.info(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: number of results: {len(results)}')
             for record in results:
                 ds_uuid: str = record.get('ds_uuid')
                 if ds_uuid is not None:
