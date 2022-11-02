@@ -92,8 +92,8 @@ class CellTypeCountManager(object):
             sample_uuid: str = rec['sample']['uuid']
             self.begin_extract_cell_type_counts_for_sample_uuid(bearer_taken, sample_uuid)
 
-    # This is called from the endpoint "PUT /sample/begin-extract-cell-type-counts-for/sample-uuid/{sample_uuid}"
-    # to initiate the cell_type_counts extraction through ingest-api on the PSC machine on which the files live.
+    # This is called to initiate the cell_type_counts extraction through ingest-api on the PSC machine
+    # on which the files live.
     def begin_extract_cell_type_counts_for_sample_uuid(self,
                                                        bearer_token: str,
                                                        sample_uuid: str) -> None:
@@ -101,6 +101,8 @@ class CellTypeCountManager(object):
             self.neo4j_manager.retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid(sample_uuid)
         # Ingest will determine which files to process for the data sets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
+        if len(ds_uuids) == 0:
+            logger.info(f'*** begin_extract_cell_type_counts_for_sample_uuid: sample_uuid:{sample_uuid} has no dataset uuids that have rui location information')
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, ds_uuids
         )

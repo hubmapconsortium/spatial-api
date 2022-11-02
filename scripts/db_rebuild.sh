@@ -2,8 +2,8 @@
 set -e
 set -u
 
-#SCHEME_HOST_PORT=https://spatial-api.dev.hubmapconsortium.org
-SCHEME_HOST_PORT=http://localhost:5001
+SCHEME_HOST_PORT=https://spatial-api.dev.hubmapconsortium.org
+# SCHEME_HOST_PORT=http://localhost:5001
 BEARER_TOKEN=
 VERBOSE=
 
