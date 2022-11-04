@@ -56,7 +56,7 @@ def log_check_timeouts_thread(lock, cell_type_count_manager_request_log) -> None
         try:
             for sample_log_entry in cell_type_count_manager_request_log.copy():
                 if sample_log_entry.get('request_time') + timedelta(hours=REQUEST_TIMEOUT_HOURS) > datetime.now():
-                    logger.error('*** Ingest-api cell_type_count request for sample_uuid '
+                    logger.error('Ingest-api cell_type_count request for sample_uuid '
                                  f'{sample_log_entry.get("sample_uuid")} has not returned data in '
                                  f'{REQUEST_TIMEOUT_HOURS} hours')
                     cell_type_count_manager_request_log.remove(sample_log_entry)
@@ -124,7 +124,7 @@ class CellTypeCountManager(object):
         # Ingest will determine which files to process for the data sets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
         if len(ds_uuids) == 0:
-            logger.info(f'*** begin_extract_cell_type_counts_for_sample_uuid: sample_uuid:{sample_uuid} has no dataset uuids that have rui location information')
+            logger.error(f'begin_extract_cell_type_counts_for_sample_uuid: sample_uuid:{sample_uuid} has no dataset uuids that have rui location information')
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, ds_uuids
         )
@@ -142,7 +142,7 @@ class CellTypeCountManager(object):
             if cell_type_counts is not None:
                 for cell_type_name, cell_type_count in cell_type_counts.items():
                     if cell_type_name not in self.cell_type_name_mappings:
-                        cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)",
+                        cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)s",
                                        {'cell_type_name': cell_type_name})
                         if cursor.fetchone() is None:
                             logger.error(f"cell_type_name '{cell_type_name}' not found in 'cell_annotation_details' table")

@@ -166,7 +166,7 @@ class Neo4jManager(object):
                 if ds_uuid is not None:
                     ds_uuids.append(ds_uuid)
         if len(ds_uuids) == 0:
-            logger.debug(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: ZERO ds_uuids found for sample_uuid {sample_uuid}')
+            logger.error(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: ZERO ds_uuids found for sample_uuid {sample_uuid}')
         return ds_uuids
 
     def query_right_kidney(self) -> List[dict]:
