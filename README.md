@@ -55,12 +55,14 @@ You can also deploy other branches on DEV for testing.
 ### Build Docker Image
 In building the latest image specify the latest tag:
 ````bash
+$ ./generate-build-version.sh
 $ docker build -t hubmap/spatial-api:latest .
 ````
 
 In building a release version of the image, use the `main` branch, and specify a version tag (without prefix `v`).
 You can see the previous version tags at [DockerHub Spatial APi](https://github.com/hubmapconsortium/spatial-api/releases/).
 ````bash
+$ ./generate-build-version.sh
 $ docker build -t hubmap/spatial-api:1.0.0 .
 ````
 
