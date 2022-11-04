@@ -79,12 +79,14 @@ class CellTypeCountManager(object):
         self.postgresql_manager = PostgresqlManager(config)
 
         celltypecount_config = config['celltypecount']
-        unknown_cell_type_name_file: str = celltypecount_config.get('UnknownFile')
-        self.unknown_cell_type_name_fp = open(unknown_cell_type_name_file, "a")
+
         cell_type_name_mapping_file_name: str = celltypecount_config.get('CellTypeNameMappingFile')
         cell_type_name_mapping_file_fp = open(cell_type_name_mapping_file_name, "r")
         self.cell_type_name_mappings = json.load(cell_type_name_mapping_file_fp)
         cell_type_name_mapping_file_fp.close()
+
+        unknown_cell_type_name_file: str = celltypecount_config.get('UnknownFile')
+        self.unknown_cell_type_name_fp = open(unknown_cell_type_name_file, "a")
 
     def close(self):
         logger.info(f'CellTypeCountManager: Closing')
