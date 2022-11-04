@@ -132,15 +132,21 @@ class CellTypeCountManager(object):
                                                                         cell_type_counts: dict) -> None:
         logger.info('sample_extracted_cell_type_counts_from_secondary_analysis_files; '
                     f'sample_uuid: {sample_uuid} cell_type_counts: {cell_type_counts}')
+        verified_cell_type: dict = {}
         try:
             cursor = self.postgresql_manager.new_cursor()
             if cell_type_counts is not None:
                 for cell_type_name, cell_type_count in cell_type_counts.items():
-                    cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)",
-                                   {'cell_type_name': cell_type_name})
-                    if cursor.fetchone() is None:
-                        logger.error(f"cell_type_name '{cell_type_name}' not found in 'cell_annotation_details' table")
-                        self.save_unknown_cell_type_name(cell_type_name)
+                    if cell_type_name not in self.cell_type_name_mappings:
+                        cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)",
+                                       {'cell_type_name': cell_type_name})
+                        if cursor.fetchone() is None:
+                            logger.error(f"cell_type_name '{cell_type_name}' not found in 'cell_annotation_details' table")
+                            self.save_unknown_cell_type_name(cell_type_name)
+                        else:
+                            verified_cell_type[cell_type_name] = cell_type_count
+                    else:
+                        verified_cell_type[cell_type_name] = cell_type_count
         finally:
             if cursor is not None:
                 cursor.close()
@@ -151,8 +157,8 @@ class CellTypeCountManager(object):
             cursor.execute("DELETE FROM cell_types WHERE sample_uuid = %(sample_uuid)s",
                            {'sample_uuid': sample_uuid})
 
-            if cell_type_counts is not None:
-                for cell_type_name, cell_type_count in cell_type_counts.items():
+            if verified_cell_type is not None:
+                for cell_type_name, cell_type_count in verified_cell_type.items():
                     cursor.execute('CALL add_cell_type_count_sp(%s, %s, %s)',
                                    (sample_uuid, self.map_cell_type_name(cell_type_name), cell_type_count))
 
