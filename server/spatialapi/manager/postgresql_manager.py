@@ -109,55 +109,6 @@ class PostgresqlManager(object):
                 cursor.close()
         return results[0]
 
-    # It seems that the data from the PSC files contains "Cell" while the web page data does not...
-    def remove_cell_from_cell_type_name(self, cell_type_name: str) -> str:
-        import re
-        tmp: str = re.sub('[Cc]ell', ' ', cell_type_name)
-        return " ".join(tmp.split())
-
-    def cell_type_name_exception_mapping(self, cell_type_name: str) -> str:
-        type_name_map: dict = {
-            'Peritubular Capillary Endothelial Cell': 'Peritubular Capilary Endothelial',
-            'Afferent Arteriole Endothelial Cell': 'Afferent / Efferent Arteriole Endothelial',
-            'Vascular Smooth Muscle Cell/Pericyte (general)': 'Vascular Smooth Muscle / Pericyte',
-            'M2-Macrophage': 'M2 Macrophage',
-            'non Classical Monocyte': 'Non-classical monocyte',
-            'Connecting Tubule Principal Cell': 'Connecting Tubule',
-            'Dendritic Cell (classical)': 'Classical Dendritic',
-            'Distal Convoluted Tubule Cell Type 1': 'Distal Convoluted Tubule',
-            'Connecting Tubule Intercalated Cell Type A': 'Connecting Tubule',
-            'Juxtaglomerular granular cell (Renin positive)': 'Renin-positive Juxtaglomerular Granular',
-            'Dendritic Cell (plasmatoid)': 'Plasmacytoid Dendritic',
-        }
-        if cell_type_name in type_name_map:
-            return type_name_map[cell_type_name]
-        return self.remove_cell_from_cell_type_name(cell_type_name)
-
-    def add_cell_type_count(self,
-                            sample_uuid: str,
-                            cell_type_name: str,
-                            cell_type_count: int):
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute('CALL add_cell_type_count_sp(%s, %s, %s)',
-                           (sample_uuid, self.cell_type_name_exception_mapping(cell_type_name), cell_type_count))
-            self.conn.commit()
-        except (psycopg2.errors.NotNullViolation) as e:
-            self.conn.rollback()
-            logger.error(f'Table cell_annotation_details is missing a cell_type_name="{cell_type_name}"! Exception Type: {e.__class__.__name__}: {e}')
-            if cell_type_name not in self.missing_cell_type_names:
-                self.missing_cell_type_names.append(cell_type_name)
-        except (Exception, psycopg2.DatabaseError) as e:
-            self.conn.rollback()
-            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
-            raise e
-        finally:
-            if cursor is not None:
-                cursor.close()
-
-    def get_missing_cell_type_names(self) -> List[str]:
-        return self.missing_cell_type_names
-
     def dump_anotation_detail_of_cell_type_name(self, cell_type_name: str) -> List:
         sql: str =\
             "SELECT cad.cell_type_name, cad.obo_ontology_id_uri, cad.ontology_id, array_agg(cm.marker) AS markers " \

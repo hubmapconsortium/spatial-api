@@ -5,7 +5,7 @@
 
 # $ docker exec -ti spatial-api /bin/sh
 
-# To get the BEARER_TOKEN, login through the UI (https://portal.hubmapconsortium.org/) to get the credentials...
+# To get the BEARER_TOKEN, login through the UI (https://ingest.hubmapconsortium.org/) to get the credentials...
 # In Firefox open 'Tools > Browser Tools > Web Developer Tools'.
 # Click on "Storage" then the dropdown for "Local Storage" and then the url,
 # Applications use the "nexus_token" from the returned information.

@@ -18,6 +18,7 @@ services:
     volumes:
       - ./server:/app/server
       - ./server/resources/app.properties:/app/server/resources/app.properties
+      - ./server/resources/cell_type_name_mapping.json:/app/server/resources/cell_type_name_mapping.json
       - ./server/log:/app/server/log
       - ./VERSION:/app/server/VERSION
       - ./BUILD:/app/server/BUILD
