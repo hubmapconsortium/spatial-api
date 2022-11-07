@@ -68,13 +68,15 @@ def samples_reindex(sample_uuid):
 
 
 def process_recs(recs, config) -> None:
-    logger.info('Thread processing samples...')
+    logger.info('Thread processing samples BEGIN')
     auth_helper_instance = AuthHelper.instance()
     # Because the Bearer token from the front end request may possibly timeout.
     bearer_token: str = auth_helper_instance.getProcessSecret()
     for rec in recs:
-        logger.info(f"process_recs for Sample_uuid: {rec['sample']['uuid']}")
+        sample_uuid: str = rec['sample']['uuid']
+        logger.info(f"process_recs for Sample_uuid: {sample_uuid}")
         sample_rec_reindex(rec, config, bearer_token)
+    logger.info('Thread processing samples END')
 
 
 @samples_reindex_blueprint.route('/samples/organs/<organ_code>/reindex', methods=['PUT'])
@@ -99,7 +101,7 @@ def samples_organs_reindex(organ_code):
         logger.debug(f"Records found: {len(recs)}")
         threading.Thread(target=process_recs,
                          args=[recs, config],
-                         name='Thread to process all sample recs') \
+                         name='process organs sample recs') \
             .start()
     finally:
         neo4j_manager.close()
@@ -130,7 +132,7 @@ def samples_reindex_all():
         logger.debug(f"Records found: {len(recs)}")
         threading.Thread(target=process_recs,
                          args=[recs, config],
-                         name='Thread to process all sample recs') \
+                         name='process all sample recs') \
             .start()
     finally:
         neo4j_manager.close()

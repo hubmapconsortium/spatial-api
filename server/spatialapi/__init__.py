@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, g
 import logging
 import time
+import configparser
+
+from hubmap_commons.hm_auth import AuthHelper
 
 from spatialapi.routes.point_search import point_search_blueprint
 from spatialapi.routes.rebuild_annotation_details import rebuild_annotation_details_blueprint
@@ -18,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
+    # app.config.from_pyfile('app.cfg')
     app.debug = True  # Enable reloader and debugger
 
     app.register_blueprint(point_search_blueprint)
@@ -63,6 +67,18 @@ def create_app(testing=False):
     @app.errorhandler(500)
     def http_internal_server_error(e):
         return jsonify(error=str(e)), 500
+
+    config = configparser.ConfigParser()
+    app_properties: str = 'resources/app.properties'
+    logger.info(f'Reading properties file: {app_properties}')
+    config.read(app_properties)
+    app_config = config['app']
+    try:
+        if AuthHelper.isInitialized() == False:
+            AuthHelper.create(app_config.get('ClientId'), app_config.get('ClientSecret'))
+            logger.info("Initialized AuthHelper class successfully :)")
+    except Exception:
+        logger.exception("Failed to initialize the AuthHelper class")
 
     logger.info('create_app: Done!')
     return app

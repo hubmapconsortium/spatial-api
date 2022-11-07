@@ -47,8 +47,8 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/RK/reindex" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
 echo
-#echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
-#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/LK/reindex" \
-# -H "Authorization: Bearer $BEARER_TOKEN"
+echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
+curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/LK/reindex" \
+ -H "Authorization: Bearer $BEARER_TOKEN"
 
 # At this point you can add any other organ_codes....
