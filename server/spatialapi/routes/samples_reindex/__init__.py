@@ -2,6 +2,7 @@ from flask import Blueprint, request, make_response
 import configparser
 from http import HTTPStatus
 from typing import List
+import threading
 import logging
 
 from spatialapi.manager.cell_type_count_manager import CellTypeCountManager
@@ -32,6 +33,8 @@ def sample_rec_reindex(rec, config, bearer_token) -> None:
 
 @samples_reindex_blueprint.route('/samples/<sample_uuid>/reindex', methods=['PUT'])
 def samples_reindex(sample_uuid):
+    """ This doesn't need to be threaded because it is just doing one sample.
+    """
     logger.info(f'samples_reindex: PUT /samples/{sample_uuid}/reindex')
     sample_uuid_validation(sample_uuid)
 
@@ -62,6 +65,11 @@ def samples_reindex(sample_uuid):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
+def process_recs(recs, config, bearer_token) -> None:
+    for rec in recs:
+        sample_rec_reindex(rec, config, bearer_token)
+
+
 @samples_reindex_blueprint.route('/samples/organs/<organ_code>/reindex', methods=['PUT'])
 def samples_organs_reindex(organ_code):
     logger.info(f'samples_organs_reindex: PUT /samples/organs/{organ_code}/reindex')
@@ -79,12 +87,13 @@ def samples_organs_reindex(organ_code):
 
     try:
         neo4j_manager = Neo4jManager(config)
-
-        logger.info(f"Inserting data for organ: {organ_code}")
         recs: List[dict] = neo4j_manager.query_organ(organ_code)
-        logger.debug(f"Records found for organ: {len(recs)}")
-        for rec in recs:
-            sample_rec_reindex(rec, config, bearer_token)
+
+        logger.debug(f"Records found: {len(recs)}")
+        threading.Thread(target=process_recs,
+                         args=[recs, config, bearer_token],
+                         name='Thread to process all sample recs') \
+            .start()
     finally:
         neo4j_manager.close()
 
@@ -109,11 +118,13 @@ def samples_reindex_all():
 
     try:
         neo4j_manager = Neo4jManager(config)
-
         recs: List[dict] = neo4j_manager.query_all()
+
         logger.debug(f"Records found: {len(recs)}")
-        for rec in recs:
-            sample_rec_reindex(rec, config, bearer_token)
+        threading.Thread(target=process_recs,
+                         args=[recs, config, bearer_token],
+                         name='Thread to process all sample recs') \
+            .start()
     finally:
         neo4j_manager.close()
 
