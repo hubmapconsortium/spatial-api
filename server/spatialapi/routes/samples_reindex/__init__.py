@@ -5,6 +5,8 @@ from typing import List
 import threading
 import logging
 
+from hubmap_commons.hm_auth import AuthHelper
+
 from spatialapi.manager.cell_type_count_manager import CellTypeCountManager
 from spatialapi.manager.sample_load_manager import SampleLoadManager
 from spatialapi.manager.neo4j_manager import Neo4jManager
@@ -65,8 +67,13 @@ def samples_reindex(sample_uuid):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
-def process_recs(recs, config, bearer_token) -> None:
+def process_recs(recs, config) -> None:
+    logger.info('Thread processing samples...')
+    auth_helper_instance = AuthHelper.instance()
+    # Because the Bearer token from the front end request may possibly timeout.
+    bearer_token: str = auth_helper_instance.getProcessSecret()
     for rec in recs:
+        logger.info(f"process_recs for Sample_uuid: {rec['sample']['uuid']}")
         sample_rec_reindex(rec, config, bearer_token)
 
 
@@ -79,11 +86,11 @@ def samples_organs_reindex(organ_code):
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    bearer: str = request.headers.get('Authorization', None)
-    if bearer is None or len(bearer.split()) != 2:
-        return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
-    bearer_token = bearer.split()[1]
-    logger.info(f"Bearer Token: {bearer_token}")
+    # bearer: str = request.headers.get('Authorization', None)
+    # if bearer is None or len(bearer.split()) != 2:
+    #     return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
+    # bearer_token = bearer.split()[1]
+    # logger.info(f"Bearer Token: {bearer_token}")
 
     try:
         neo4j_manager = Neo4jManager(config)
@@ -91,7 +98,7 @@ def samples_organs_reindex(organ_code):
 
         logger.debug(f"Records found: {len(recs)}")
         threading.Thread(target=process_recs,
-                         args=[recs, config, bearer_token],
+                         args=[recs, config],
                          name='Thread to process all sample recs') \
             .start()
     finally:
@@ -110,11 +117,11 @@ def samples_reindex_all():
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    bearer: str = request.headers.get('Authorization', None)
-    if bearer is None or len(bearer.split()) != 2:
-        return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
-    bearer_token = bearer.split()[1]
-    logger.info(f"Bearer Token: {bearer_token}")
+    # bearer: str = request.headers.get('Authorization', None)
+    # if bearer is None or len(bearer.split()) != 2:
+    #     return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
+    # bearer_token = bearer.split()[1]
+    # logger.info(f"Bearer Token: {bearer_token}")
 
     try:
         neo4j_manager = Neo4jManager(config)
@@ -122,7 +129,7 @@ def samples_reindex_all():
 
         logger.debug(f"Records found: {len(recs)}")
         threading.Thread(target=process_recs,
-                         args=[recs, config, bearer_token],
+                         args=[recs, config],
                          name='Thread to process all sample recs') \
             .start()
     finally:
