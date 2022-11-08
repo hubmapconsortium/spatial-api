@@ -71,6 +71,28 @@ threading.Thread(target=log_check_timeouts_thread,
 # This thread will run forever, so we don't need a handle on it to .join()
 
 
+# Austin Hartman Novemer 8, 2022 10:41 AM
+# The ‘annotation details’ marker tables can be found within the azimuth website repo here:
+# https://github.com/satijalab/azimuth_website/tree/master/static/csv. However, the annotations
+# listed may not (actually usually don’t) line up with ASCT+B cell types as you point out.
+# So for the kidney, the azimuth website lists the original annotations at 3 levels of resolution
+# and the secondary_analysis.h5ad files contain ASCT+B annotations which are mapped from the level 3
+# annotations using this table:
+# https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json
+# where keys represent the level 3 annotations (kidney_l3.csv) and values are ASCT+B names
+def load_cell_type_mapping() -> dict:
+    import urllib.request, json
+    url_str: str = "https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json"
+    mapping: dict = {}
+    with urllib.request.urlopen(url_str) as url:
+        data = json.load(url)
+        for k, v in data.mapping:
+            # it is reversed from what we need...
+            mapping[v] = k
+    logger.debug(f'Loaded cell_type_mapping: {mapping}')
+    return mapping
+
+
 class CellTypeCountManager(object):
 
     def __init__(self, config):
@@ -80,11 +102,12 @@ class CellTypeCountManager(object):
 
         celltypecount_config = config['celltypecount']
 
-        cell_type_name_mapping_file_name: str = celltypecount_config.get('CellTypeNameMappingFile')
-        logger.debug(f"Reading json from '{cell_type_name_mapping_file_name}'")
-        cell_type_name_mapping_file_fp = open(cell_type_name_mapping_file_name, "r")
-        self.cell_type_name_mappings = json.load(cell_type_name_mapping_file_fp)
-        cell_type_name_mapping_file_fp.close()
+        # cell_type_name_mapping_file_name: str = celltypecount_config.get('CellTypeNameMappingFile')
+        # logger.debug(f"Reading json from '{cell_type_name_mapping_file_name}'")
+        # cell_type_name_mapping_file_fp = open(cell_type_name_mapping_file_name, "r")
+        # self.cell_type_name_mapping = json.load(cell_type_name_mapping_file_fp)
+        # cell_type_name_mapping_file_fp.close()
+        self.cell_type_name_mapping = load_cell_type_mapping()
 
         unknown_cell_type_name_file: str = celltypecount_config.get('UnknownFile')
         logger.debug(f"Opening for append '{unknown_cell_type_name_file}'")
@@ -101,8 +124,8 @@ class CellTypeCountManager(object):
         self.unknown_cell_type_name_fp.writelines(f'{cell_type_name}\n')
 
     def map_cell_type_name(self, cell_type_name):
-        if cell_type_name in self.cell_type_name_mappings:
-            return self.cell_type_name_mappings[cell_type_name]
+        if cell_type_name in self.cell_type_name_mapping:
+            return self.cell_type_name_mapping[cell_type_name]
         return cell_type_name
 
     def begin_extract_cell_type_counts_for_all_samples_for_organ_code(self,
@@ -141,7 +164,7 @@ class CellTypeCountManager(object):
             cursor = self.postgresql_manager.new_cursor()
             if cell_type_counts is not None:
                 for cell_type_name, cell_type_count in cell_type_counts.items():
-                    if cell_type_name not in self.cell_type_name_mappings:
+                    if cell_type_name not in self.cell_type_name_mapping:
                         cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)s",
                                        {'cell_type_name': cell_type_name})
                         if cursor.fetchone() is None:
