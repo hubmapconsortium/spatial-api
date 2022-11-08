@@ -53,6 +53,8 @@ def start_process_recs_thread(recs, config) -> None:
     thread = threading.Thread(target=process_recs_thread,
                               args=[recs, config],
                               name='process sample recs')
+    # Setting thread.daemon = True will allow the main program to exit.
+    # Apps normally wait till all child threads are finished before completing.
     thread.daemon = True
     thread.start()
     logger.info(f"Daemon thread '{thread.name}' is started.")
