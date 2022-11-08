@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from typing import List
 import threading
 import time
-import json
 from psycopg2 import DatabaseError
 from psycopg2.errors import UniqueViolation, NotNullViolation
 
@@ -81,14 +80,19 @@ threading.Thread(target=log_check_timeouts_thread,
 # https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json
 # where keys represent the level 3 annotations (kidney_l3.csv) and values are ASCT+B names
 def load_cell_type_mapping() -> dict:
-    import urllib.request, json
-    url_str: str = "https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json"
+    from urllib.request import urlopen
+    import json
+    from bs4 import BeautifulSoup
+    url_str: str = "https://raw.githubusercontent.com/hubmapconsortium/azimuth-annotate/main/data/kidney.json"
     mapping: dict = {}
-    with urllib.request.urlopen(url_str) as url:
-        data = json.load(url)
-        for k, v in data.mapping.items():
-            # it is reversed from what we need...
-            mapping[v] = k
+    url = urlopen(url_str)
+    content = url.read()
+    soup = BeautifulSoup(content, "html.parser")
+    content_json = json.loads(str(soup))
+    content_mapping = content_json['mapping']
+    for k, v in content_mapping.items():
+        # it is reversed from what we need...
+        mapping[v] = k
     logger.debug(f'Loaded cell_type_mapping: {mapping}')
     return mapping
 
@@ -198,3 +202,7 @@ class CellTypeCountManager(object):
             if cursor is not None:
                 cursor.close()
         request_log_delete(sample_uuid)
+
+
+if __name__ == '__main__':
+    load_cell_type_mapping()
