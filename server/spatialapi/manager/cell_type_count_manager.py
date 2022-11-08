@@ -86,7 +86,7 @@ def load_cell_type_mapping() -> dict:
     mapping: dict = {}
     with urllib.request.urlopen(url_str) as url:
         data = json.load(url)
-        for k, v in data.mapping:
+        for k, v in data.mapping.items():
             # it is reversed from what we need...
             mapping[v] = k
     logger.debug(f'Loaded cell_type_mapping: {mapping}')

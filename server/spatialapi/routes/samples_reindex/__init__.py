@@ -17,10 +17,12 @@ logger = logging.getLogger(__name__)
 samples_reindex_blueprint = Blueprint('samples_reindex_blueprint', __name__)
 
 
-def sample_rec_reindex(rec, config, bearer_token) -> None:
+def sample_rec_reindex(rec, config, bearer_token: str) -> None:
+    sample_load_manager: SampleLoadManager = None
+    cell_type_count_manager: CellTypeCountManager = None
     try:
-        sample_load_manager: SampleLoadManager = SampleLoadManager(config)
-        cell_type_count_manager: CellTypeCountManager = CellTypeCountManager(config)
+        sample_load_manager = SampleLoadManager(config)
+        cell_type_count_manager = CellTypeCountManager(config)
 
         # This will delete any existing sample data and also load the spatial information...
         sample_load_manager.insert_sample_data(rec)
@@ -31,8 +33,10 @@ def sample_rec_reindex(rec, config, bearer_token) -> None:
     except Exception as e:
         logger.error(f'sample_rec_reindex Exception: {e}')
     finally:
-        sample_load_manager.close()
-        cell_type_count_manager.close()
+        if sample_load_manager is not None:
+            sample_load_manager.close()
+        if cell_type_count_manager is not None:
+            cell_type_count_manager.close()
 
 
 def process_recs_thread(recs, config) -> None:
