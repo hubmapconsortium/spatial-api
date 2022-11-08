@@ -47,6 +47,17 @@ def process_recs_thread(recs, config) -> None:
     logger.info('Thread processing samples END')
 
 
+def start_process_recs_thread(recs, config) -> None:
+    # https://stackoverflow.com/questions/63500768/how-to-work-with-background-threads-in-flask
+    # https://smirnov-am.github.io/background-jobs-with-flask/
+    thread = threading.Thread(target=process_recs_thread,
+                              args=[recs, config],
+                              name='process sample recs')
+    thread.daemon = True
+    thread.start()
+    logger.info(f"Daemon thread '{thread.name}' is started.")
+
+
 @samples_reindex_blueprint.route('/samples/<sample_uuid>/reindex', methods=['PUT'])
 def samples_reindex(sample_uuid):
     """ This doesn't need to be threaded because it is just doing one sample.
@@ -99,12 +110,9 @@ def samples_organs_reindex(organ_code):
     try:
         neo4j_manager = Neo4jManager(config)
         recs: List[dict] = neo4j_manager.query_organ(organ_code)
-
         logger.debug(f"Records found: {len(recs)}")
-        threading.Thread(target=process_recs_thread,
-                         args=[recs, config],
-                         name='process organs sample recs') \
-            .start()
+
+        start_process_recs_thread(recs, config)
     finally:
         neo4j_manager.close()
 
@@ -130,12 +138,9 @@ def samples_reindex_all():
     try:
         neo4j_manager = Neo4jManager(config)
         recs: List[dict] = neo4j_manager.query_all()
-
         logger.debug(f"Records found: {len(recs)}")
-        threading.Thread(target=process_recs_thread,
-                         args=[recs, config],
-                         name='process all sample recs') \
-            .start()
+
+        start_process_recs_thread(recs, config)
     finally:
         neo4j_manager.close()
 
