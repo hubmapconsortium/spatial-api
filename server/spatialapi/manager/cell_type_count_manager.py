@@ -93,7 +93,7 @@ def load_cell_type_mapping() -> dict:
     for k, v in content_mapping.items():
         # it is reversed from what we need...
         mapping[v] = k
-    logger.debug(f'Loaded cell_type_mapping: {mapping}')
+    # logger.debug(f'Loaded cell_type_mapping: {mapping}')
     return mapping
 
 
