@@ -42,7 +42,7 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/rebuild-annotation-details" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
 echo
-echo ">>> Extract cell_type_counts for samples of; organ_code: RK..."
+echo ">>> Extract cell_type_counts for all samples..."
 curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/reindex-all" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
@@ -54,6 +54,11 @@ curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/reindex-all" \
 #echo
 #echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
 #curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/LK/reindex" \
+# -H "Authorization: Bearer $BEARER_TOKEN"
+#
+#SAMPLE_ID=2b8f250ca625a3186cc6e2e8e40c3c58
+#echo ">>> Extract cell_type_counts for sample_id: ${SAMPLE_ID}..."
+#curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/${SAMPLE_ID}/reindex" \
 # -H "Authorization: Bearer $BEARER_TOKEN"
 
 # At this point you can add any other organ_codes....
