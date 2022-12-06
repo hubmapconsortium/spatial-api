@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS sample (
     "sample_hubmap_id" text NOT NULL,
     "sample_specimen_type" text NOT NULL,
     "sample_rui_location" text NOT NULL,
+    "sample_last_modified_timestamp" BIGINT NOT NULL,
     CONSTRAINT sample_relative_spatial_entry_sample_uuid_key UNIQUE (relative_spatial_entry_iri, sample_uuid)
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis

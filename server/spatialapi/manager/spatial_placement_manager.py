@@ -40,17 +40,16 @@ class SpatialPlacementManager(object):
 
     def close(self):
         logger.info(f'SpatialPlacementManager: Closing')
-        pass
 
     # https://ccf-api--staging.herokuapp.com/#/operations/get-spatial-placement
     def placement_relative_to_target(self, target: str,  sample_rui_location: dict) -> dict:
         target_iri: str = f"http://purl.org/ccf/latest/ccf.owl#{target}"
         logger.info(f'request: target_iri: {target_iri}; sample_rui_location: {json.dumps(sample_rui_location)}')
         resp = requests.post(self.server,
-            headers = {
+            headers={
                 "Content-Type": "application/json"
             },
-            json = {
+            json={
                 "target_iri": target_iri,
                 "rui_location": sample_rui_location
             }

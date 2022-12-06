@@ -7,6 +7,15 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 
+# If changing this, also change "process_record()" which repackages this information into a dict...
+cypher_common_return: str =\
+    " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+    " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+    " s.last_modified_timestamp as sample_last_modified_timestamp," \
+    " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
+    " o.uuid as organ_uuid, o.organ as organ_code"
+
+
 class Neo4jManager(object):
 
     def __init__(self, config):
@@ -20,9 +29,10 @@ class Neo4jManager(object):
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
     def close(self) -> None:
-        logger.info(f'Neo4jManager: Closing connection to Neo4J')
         if self.driver is not None:
+            logger.info(f'Neo4jManager: Closing connection to Neo4J')
             self.driver.close()
+            self.driver = None
 
     def search_organ_donor_data_for_grouping_concept_preferred_term(self,
                                                                     organ_donor_data_list: List[dict],
@@ -66,6 +76,7 @@ class Neo4jManager(object):
                 'uuid': record.get('sample_uuid'),
                 'hubmap_id': record.get('sample_hubmap_id'),
                 'specimen_type': record.get('sample_specimen_type'),
+                'last_modified_timestamp': record.get('sample_last_modified_timestamp'),
                 'rui_location': rui_location_json
             }
             rec: dict = {
@@ -98,36 +109,22 @@ class Neo4jManager(object):
     def query_all(self) -> List[dict]:
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''" \
-            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
-            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
-            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
-            " o.uuid as organ_uuid, o.organ as organ_code"
+            " WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''" + \
+            cypher_common_return
         return self.query_with_cypher(cypher)
 
     def query_organ(self, organ: str) -> List[dict]:
-        # cypher: str =\
-        #     "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
-        #     f" WHERE exists(s.rui_location) AND s.rui_location <> '' AND organ.organ = '{organ}'" \
-        #     " RETURN s.uuid AS uuid, s.hubmap_id AS hubmap_id, s.specimen_type AS specimen_type," \
-        #     " organ.organ AS organ, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" \
-            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
-            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
-            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
-            " o.uuid as organ_uuid, o.organ as organ_code"
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" + \
+            cypher_common_return
         return self.query_with_cypher(cypher)
 
     def query_sample_uuid(self, sample_uuid: str) -> List[dict]:
         cypher: str =\
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
-            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
-            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
-            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
-            " o.uuid as organ_uuid, o.organ as organ_code"
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" + \
+            cypher_common_return
         return self.query_with_cypher(cypher)
 
     def query_cell_types(self) -> List[dict]:
@@ -145,7 +142,7 @@ class Neo4jManager(object):
                     processed_rec: dict = {
                         # Key into the column sample.sample_uuid
                         'sample_uuid': record.get('sample_uuid'),
-                        # Used to get the psc path from the ingest api
+                        # Used to get the psc path from ingest_api
                         'ds_uuid': record.get('ds_uuid')
                     }
                     recs.append(processed_rec)
