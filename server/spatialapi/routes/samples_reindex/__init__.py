@@ -10,7 +10,7 @@ from hubmap_commons.hm_auth import AuthHelper
 from spatialapi.manager.cell_type_count_manager import CellTypeCountManager
 from spatialapi.manager.sample_load_manager import SampleLoadManager
 from spatialapi.manager.neo4j_manager import Neo4jManager
-from spatiemapi.manager.postgresql_manager import PostgresqlManager
+from spatialapi.manager.postgresql_manager import PostgresqlManager
 from spatialapi.utils import json_error, sample_uuid_validation
 
 logger = logging.getLogger(__name__)
