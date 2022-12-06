@@ -131,6 +131,7 @@ def samples_incremental_reindex():
         start_process_recs_thread(recs, config)
     finally:
         neo4j_manager.close()
+        postgresql_manager.close()
 
     # Because it will take time for the cell_type_counts to be processed...
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
