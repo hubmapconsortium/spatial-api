@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
--- To reload the database on dev...
+-- To reload the database tables on dev...
 -- $ psql -h 18.205.215.12 -p 5432 -d spatial -U spatial -f db/initdb.d/initdb.sql
 
 SELECT postgis_version();
