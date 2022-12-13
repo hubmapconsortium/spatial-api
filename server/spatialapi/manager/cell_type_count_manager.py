@@ -157,6 +157,7 @@ class CellTypeCountManager(object):
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, [ds['uuid'] for ds in datasets]
         )
+        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; saving datasets: {datasets}")
         try:
             cursor = self.postgresql_manager.new_cursor()
             for dataset in datasets:
@@ -169,7 +170,7 @@ class CellTypeCountManager(object):
             self.postgresql_manager.commit()
         except (Exception, DatabaseError, UniqueViolation) as e:
             self.postgresql_manager.rollback()
-            logger.error(f'Exception Type causing rollback: {e.__class__.__name__}: {e}')
+            logger.error(f'begin_extract_cell_type_counts_for_sample_uuid; Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
