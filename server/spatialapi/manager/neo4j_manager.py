@@ -143,7 +143,7 @@ class Neo4jManager(object):
             for result in results:
                 ds_uuid: str = result.get('ds_uuid')
                 if ds_uuid is not None:
-                    datasets.append({'uuid': ds_uuid, 'last_modified_timestamp': result.get('last_modified_timestamp')})
+                    datasets.append({'uuid': ds_uuid, 'last_modified_timestamp': result.get('ds_last_modified_timestamp')})
         if len(datasets) == 0:
             logger.info('retrieve_datasets_that_have_rui_location_information_for_sample_uuid:'
                         f' ZERO datasets found for sample_uuid {sample_uuid}')

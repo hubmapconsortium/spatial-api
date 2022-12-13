@@ -151,8 +151,8 @@ class CellTypeCountManager(object):
         # Ingest will determine which files to process for the datasets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
         if len(datasets) == 0:
-            logger.error('begin_extract_cell_type_counts_for_sample_uuid: '
-                         f'sample_uuid:{sample_uuid} has no datasets with rui location information')
+            logger.info('begin_extract_cell_type_counts_for_sample_uuid: '
+                        f'sample_uuid:{sample_uuid} has no datasets with rui location information')
             return
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, [ds['uuid'] for ds in datasets]
@@ -161,6 +161,9 @@ class CellTypeCountManager(object):
         try:
             cursor = self.postgresql_manager.new_cursor()
             for dataset in datasets:
+                if dataset['last_modified_timestamp'] is None:
+                    logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; invalid dataset: {dataset}")
+                    continue
                 cursor.execute("INSERT INTO dataset (uuid, last_modified_timestamp) VALUES(%s, %s) "
                                "ON CONFLICT (uuid) "
                                "DO UPDATE SET (last_modified_timestamp) = (EXCLUDED.last_modified_timestamp);",
