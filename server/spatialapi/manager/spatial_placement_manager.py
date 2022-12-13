@@ -55,7 +55,8 @@ class SpatialPlacementManager(object):
             }
         )
         if resp.status_code != 200:
-            logger.error(f"**** SpatialPlacementManager/request: POST {self.server}: status: {resp.status_code}; rui_location: {json.dumps(sample_rui_location)}")
+            logger.error(f"**** SpatialPlacementManager/request: POST {self.server}: status: {resp.status_code};"
+                         f" rui_location: {json.dumps(sample_rui_location)}")
             raise SpatialPlacementException()
         placement: dict = resp.json()
         logger.debug(f"SpatialPlacementManager/request: {self.server} placement: {placement}")

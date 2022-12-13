@@ -217,7 +217,6 @@ class SpatialManager(object):
             'sample_hubmap_id': sample_hubmap_id,
             'relative_spatial_entry_iri': relative_spatial_entry_iri
         })
-        # logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:
             abort(json_error(f'The attributes hubmap_id: {sample_hubmap_id}, with'
                              f' relative_spatial_entri_iri: {relative_spatial_entry_iri}'
@@ -225,7 +224,6 @@ class SpatialManager(object):
                              HTTPStatus.NOT_FOUND))
         if len(recs) != 1:
             logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
-        # logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
 
     # Used by: "POST /spatial-search/hubmap_id"
