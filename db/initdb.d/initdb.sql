@@ -6,7 +6,8 @@ CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
 SELECT postgis_version();
 
-DROP TABLE IF EXISTS sample;
+DROP TABLE IF EXISTS sample, dataset, sample_dataset;
+
 CREATE TABLE IF NOT EXISTS sample (
     "id" SERIAL PRIMARY KEY,
     "organ_uuid" text NOT NULL,
@@ -26,6 +27,18 @@ CREATE TABLE IF NOT EXISTS sample (
 ALTER TABLE sample ADD COLUMN IF NOT EXISTS sample_geom geometry(POLYHEDRALSURFACEZ,0);
 ALTER TABLE sample ALTER COLUMN sample_geom SET NOT NULL;
 CREATE INDEX IF NOT EXISTS "geom_sample_index" ON sample USING GIST(sample_geom);
+
+CREATE TABLE IF NOT EXISTS dataset (
+    "id" SERIAL PRIMARY KEY,
+    "uuid" text NOT NULL UNIQUE,
+    "last_modified_timestamp" BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sample_dataset (
+    sample_uuid INT REFERENCES sample (sample_uuid),
+    dataset_uuid INT REFERENCES dataset (uuid) ON DELETE CASCADE,
+    CONSTRAINT sample_dataset_pkey PRIMARY KEY (sample_uuid, dataset_uuid)
+);
 
 -- Identify tissue samples that are registered in the spatial database by the types of cells contained within.
 

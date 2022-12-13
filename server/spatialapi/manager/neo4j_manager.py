@@ -7,8 +7,14 @@ from typing import List
 logger = logging.getLogger(__name__)
 
 
+cypher_common_match: str = \
+    "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)"
+
+cypher_common_where: str = \
+    " WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''"
+
 # If changing this, also change "process_record()" which repackages this information into a dict...
-cypher_common_return: str =\
+cypher_common_return: str = \
     " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
     " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
     " s.last_modified_timestamp as sample_last_modified_timestamp," \
@@ -107,66 +113,38 @@ class Neo4jManager(object):
         return recs
 
     def query_all(self) -> List[dict]:
-        cypher: str =\
-            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            " WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''" + \
-            cypher_common_return
+        cypher: str = \
+            cypher_common_match + cypher_common_where + cypher_common_return
         return self.query_with_cypher(cypher)
 
     def query_organ(self, organ: str) -> List[dict]:
-        cypher: str =\
-            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND o.organ = '{organ}'" + \
-            cypher_common_return
+        cypher: str = \
+            cypher_common_match + cypher_common_where + f" AND o.organ = '{organ}'" + cypher_common_return
         return self.query_with_cypher(cypher)
 
     def query_sample_uuid(self, sample_uuid: str) -> List[dict]:
         cypher: str =\
-            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" + \
-            cypher_common_return
+            cypher_common_match + cypher_common_where + f" AND s.uuid = '{sample_uuid}'" + cypher_common_return
         return self.query_with_cypher(cypher)
 
-    def query_cell_types(self) -> List[dict]:
-        recs: List[dict] = []
+    def retrieve_datasets_that_have_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[dict]:
+        datasets: List[dict] = []
+        # Note: ds.data_types is actually a string pretending to be a list.
         cypher: str = \
-            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            " WHERE NOT s.rui_location IS NULL AND NOT trim(s.rui_location) = '' AND (o.organ = 'LK' or o.organ = 'RK')" \
-            " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
-            " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq' OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x' OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
-            " RETURN DISTINCT s.uuid AS sample_uuid, ds.uuid AS ds_uuid, dn.uuid, dn.metadata, s.rui_location"
-        with self.driver.session() as session:
-            results: neo4j.Result = session.run(cypher)
-            for record in results:
-                if record.get('ds_uuid') is not None:
-                    processed_rec: dict = {
-                        # Key into the column sample.sample_uuid
-                        'sample_uuid': record.get('sample_uuid'),
-                        # Used to get the psc path from ingest_api
-                        'ds_uuid': record.get('ds_uuid')
-                    }
-                    recs.append(processed_rec)
-        return recs
-
-    def retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
-        ds_uuids: List[dict] = []
-        cypher: str = \
-            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
-            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> '' AND s.uuid = '{sample_uuid}'" \
+            cypher_common_match + cypher_common_where + f" AND s.uuid = '{sample_uuid}'" \
             " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
             " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
             " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
             " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
-            " RETURN DISTINCT ds.uuid AS ds_uuid"
+            " AND ds.status IN ['QA', 'Published']" \
+            " RETURN DISTINCT ds.uuid AS ds_uuid, ds.last_modified_timestamp as ds_last_modified_timestamp"
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
-            for record in results:
-                ds_uuid: str = record.get('ds_uuid')
+            for result in results:
+                ds_uuid: str = result.get('ds_uuid')
                 if ds_uuid is not None:
-                    ds_uuids.append(ds_uuid)
-        if len(ds_uuids) == 0:
-            logger.info(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: ZERO ds_uuids found for sample_uuid {sample_uuid}')
-        return ds_uuids
-
-    def query_right_kidney(self) -> List[dict]:
-        return self.query_organ('RK')
+                    datasets.append({'uuid': ds_uuid, 'last_modified_timestamp': result.get('last_modified_timestamp')})
+        if len(datasets) == 0:
+            logger.info('retrieve_datasets_that_have_rui_location_information_for_sample_uuid:'
+                        f' ZERO datasets found for sample_uuid {sample_uuid}')
+        return datasets
