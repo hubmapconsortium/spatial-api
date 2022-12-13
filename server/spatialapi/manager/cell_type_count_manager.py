@@ -165,8 +165,8 @@ class CellTypeCountManager(object):
                     logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; invalid dataset: {dataset}")
                     continue
                 cursor.execute("INSERT INTO dataset (uuid, last_modified_timestamp) VALUES(%s, %s) "
-                               "ON CONFLICT (uuid) "
-                               "DO UPDATE SET (last_modified_timestamp) = (EXCLUDED.last_modified_timestamp);",
+                               "ON CONFLICT (uuid) DO UPDATE "
+                               "SET last_modified_timestamp = EXCLUDED.last_modified_timestamp;",
                                (dataset['uuid'], dataset['last_modified_timestamp'],))
                 cursor.execute("INSERT INTO sample_dataset (sample_uuid, dataset_uuid) VALUES(%s, %s);",
                                (sample_uuid, dataset['uuid'],))
