@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS dataset (
 );
 
 CREATE TABLE IF NOT EXISTS sample_dataset (
-    sample_uuid INT REFERENCES sample (sample_uuid),
-    dataset_uuid INT REFERENCES dataset (uuid) ON DELETE CASCADE,
+    sample_uuid TEXT NOT NULL,
+    dataset_uuid TEXT REFERENCES dataset (uuid) ON DELETE CASCADE,
     CONSTRAINT sample_dataset_pkey PRIMARY KEY (sample_uuid, dataset_uuid)
 );
 
