@@ -31,8 +31,6 @@ def sample_rec_reindex(rec, config, bearer_token: str) -> None:
         # Tells Ingest-api to begin processing cell_type_count data...
         sample_uuid: str = rec['sample']['uuid']
         cell_type_count_manager.begin_extract_cell_type_counts_for_sample_uuid(bearer_token, sample_uuid)
-    except Exception as e:
-        logger.error(f'sample_rec_reindex Exception: {e}')
     finally:
         if sample_load_manager is not None:
             sample_load_manager.close()
