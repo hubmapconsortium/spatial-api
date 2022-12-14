@@ -98,6 +98,32 @@ def samples_reindex(sample_uuid):
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
+def db_retrieve_sample_datasets(postgresql_manager: PostgresqlManager) -> List[dict]:
+    """Return a list of dictionaries where the sample_uuid is the key,
+    and the value is a dictionary of the form k:dataset_uuid, v:dataset_timestamp
+    for each dataset associated with that sample.
+    """
+    rows: list = \
+        postgresql_manager.select_all(
+            "SELECT sample_dataset.sample_uuid,"
+            " dataset.uuid AS dataset_uuid,"
+            " dataset.last_modified_timestamp AS dataset_last_modified_timestamp"
+            " FROM dataset"
+            " INNER JOIN sample_dataset"
+            " ON dataset.uuid = sample_dataset.dataset_uuid;"
+        )
+    datasets: List[dict] = []
+    for row in rows:
+        sample_uuid: str = row[0]
+        ds_entry: dict = {row[1]: row[2]}
+        ds_sample_uuid_list: list = [ds for ds in datasets if sample_uuid in ds]
+        if len(ds_sample_uuid_list) == 0:
+            datasets.append({sample_uuid: ds_entry})
+        else:
+            ds_entries: dict = ds_sample_uuid_list[0][sample_uuid]
+            ds_entries.update(ds_entry)
+    return datasets
+
 @samples_reindex_blueprint.route('/samples/incremental-reindex', methods=['PUT'])
 def samples_incremental_reindex():
     """Reindex only those recs which are newer in Neo4J"""
@@ -109,23 +135,48 @@ def samples_incremental_reindex():
     config.read(app_properties)
 
     try:
+        # TODO: Break this off into a thread because there is a lot of computation going on here...
         neo4j_manager = Neo4jManager(config)
         postgresql_manager = PostgresqlManager(config)
 
         sample_timestamp_list: list =\
-            postgresql_manager.select_all("SELECT sample_uuid, sample_last_modified_timestamp from sample")
+            postgresql_manager.select_all(
+                "SELECT sample_uuid, sample_last_modified_timestamp FROM sample;"
+            )
         # Create a dict where the sample_uuid is the key to the sample_last_modified_timestamp value...
         sample_timestamp: dict = {row[0]: row[1] for row in sample_timestamp_list}
+
+        db_sample_datasets: List[dict] =\
+            db_retrieve_sample_datasets(postgresql_manager)
+
+        neo4j_sample_datasets: List[dict] =\
+            neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid()
 
         all_recs: List[dict] = neo4j_manager.query_all()
 
         recs: list = []
         for rec in all_recs:
-            lmt_from_db: int = sample_timestamp.get(rec['sample']['uuid'])
-            # Reprocess the recs whose sample.last_modified_timestamp in Neo4J is greater than that in the database,
-            # or those that don't yet exist in the database...
-            if lmt_from_db is None or rec['sample']['last_modified_timestamp'] > lmt_from_db:
+            sample_uuid: str = rec['sample']['uuid']
+            sample_last_modified_timestamp: int = sample_timestamp.get(sample_uuid)
+            # Reprocess the rec whose sample.last_modified_timestamp in Neo4J is greater than that in the database,
+            # or if the sample does not exist in the database...
+            if sample_last_modified_timestamp is None or\
+                    rec['sample']['last_modified_timestamp'] > sample_last_modified_timestamp:
                 recs.append(rec)
+                continue
+            # also process recs whose dataset.last_modified_timestamp in Neo4J is greater than that in the database
+            db_sample_datasets: list = [ds for ds in db_sample_datasets if sample_uuid in ds]
+            db_datasets: dict = db_sample_datasets[0].get(sample_uuid)
+            neo4j_sample_datasets: list = [ds for ds in neo4j_sample_datasets if sample_uuid in ds]
+            neo4j_datasets: dict = neo4j_sample_datasets[0].get(sample_uuid)
+            for neo4j_ds_uuid, neo4j_ds_ts in neo4j_datasets.items():
+                db_ds_ts = db_datasets.get(neo4j_ds_uuid)
+                if db_ds_ts is None:
+                    # neo4j dataset NEW since we last processed the sample
+                    recs.append(rec)
+                elif neo4j_ds_ts > db_ds_ts:
+                    # neo4j dataset is NEWER since we last processed the sample
+                    recs.append(rec)
         logger.debug(f"Records to be reindexed: {len(recs)}")
 
         start_process_recs_thread(recs, config)

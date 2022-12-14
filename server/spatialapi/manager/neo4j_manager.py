@@ -15,7 +15,7 @@ cypher_common_where: str = \
 
 # If changing this, also change "process_record()" which repackages this information into a dict...
 cypher_common_return: str = \
-    " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+    " RETURN DISTINCT s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
     " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
     " s.last_modified_timestamp as sample_last_modified_timestamp," \
     " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
@@ -103,7 +103,7 @@ class Neo4jManager(object):
             results: neo4j.Result = session.run(cypher)
             for record in results:
                 processed_rec: dict = self.process_record(record)
-                #import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 if processed_rec is not None:
                     recs.append(processed_rec)
                     results_n = results_n + 1
@@ -127,23 +127,38 @@ class Neo4jManager(object):
             cypher_common_match + cypher_common_where + f" AND s.uuid = '{sample_uuid}'" + cypher_common_return
         return self.query_with_cypher(cypher)
 
-    def retrieve_datasets_that_have_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[dict]:
+    def retrieve_datasets_that_have_rui_location_information_for_sample_uuid(self, sample_uuid=None) -> List[dict]:
+        """Return a list of dictionaries where the sample_uuid is the key,
+        and the value is a dictionary of the form key:dataset_uuid, value:dataset_timestamp
+        for each dataset associated with that sample.
+        """
         datasets: List[dict] = []
+        cypher: str = cypher_common_match + cypher_common_where
+        if sample_uuid is not None:
+            cypher += f" AND s.uuid = '{sample_uuid}'"
         # Note: ds.data_types is actually a string pretending to be a list.
-        cypher: str = \
-            cypher_common_match + cypher_common_where + f" AND s.uuid = '{sample_uuid}'" \
+        cypher += \
             " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
             " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
             " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
             " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
             " AND ds.status IN ['QA', 'Published']" \
-            " RETURN DISTINCT ds.uuid AS ds_uuid, ds.last_modified_timestamp as ds_last_modified_timestamp"
+            " RETURN DISTINCT" \
+            " s.uuid AS sample_uuid, ds.uuid AS ds_uuid, ds.last_modified_timestamp as ds_last_modified_timestamp"
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
             for result in results:
+                sample_uuid: str = result.get('sample_uuid')
                 ds_uuid: str = result.get('ds_uuid')
-                if ds_uuid is not None:
-                    datasets.append({'uuid': ds_uuid, 'last_modified_timestamp': result.get('ds_last_modified_timestamp')})
+                ds_last_modified_timestamp: int = result.get('ds_last_modified_timestamp')
+                if ds_uuid is not None and ds_last_modified_timestamp is not None:
+                    ds_entry: dict = {ds_uuid: ds_last_modified_timestamp}
+                    ds_sample_uuid_list: list = [ds for ds in datasets if sample_uuid in ds]
+                    if len(ds_sample_uuid_list) == 0:
+                        datasets.append({sample_uuid: ds_entry})
+                    else:
+                        ds_entries: dict = ds_sample_uuid_list[0].get(sample_uuid)
+                        ds_entries.update(ds_entry)
         if len(datasets) == 0:
             logger.info('retrieve_datasets_that_have_rui_location_information_for_sample_uuid:'
                         f' ZERO datasets found for sample_uuid {sample_uuid}')

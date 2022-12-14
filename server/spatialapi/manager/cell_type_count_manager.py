@@ -146,30 +146,34 @@ class CellTypeCountManager(object):
     def begin_extract_cell_type_counts_for_sample_uuid(self,
                                                        bearer_token: str,
                                                        sample_uuid: str) -> None:
-        datasets: List[dict] =\
+        result: List[dict] =\
             self.neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid(sample_uuid)
         # Ingest will determine which files to process for the datasets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
-        if len(datasets) == 0:
+        if len(result) == 0:
             logger.info('begin_extract_cell_type_counts_for_sample_uuid: '
                         f'sample_uuid:{sample_uuid} has no datasets with rui location information')
             return
+        sample_datasets: list = [ds for ds in result if sample_uuid in ds]
+        datasets: dict = sample_datasets[0].get(sample_uuid)
+        ds_uuids: list = datasets.keys()
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
-            bearer_token, sample_uuid, [ds['uuid'] for ds in datasets]
+            bearer_token, sample_uuid, ds_uuids
         )
-        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; saving datasets: {datasets}")
+        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; saving datasets: {datasets[0]}")
         try:
             cursor = self.postgresql_manager.new_cursor()
-            for dataset in datasets:
-                if dataset['last_modified_timestamp'] is None:
-                    logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; invalid dataset: {dataset}")
+            for ds_uuid, ds_ts in datasets.items():
+                if ds_ts is None:
+                    logger.info("begin_extract_cell_type_counts_for_sample_uuid;"
+                                f" invalid timestamp in datasets: {datasets}")
                     continue
                 cursor.execute("INSERT INTO dataset (uuid, last_modified_timestamp) VALUES(%s, %s) "
                                "ON CONFLICT (uuid) DO UPDATE "
                                "SET last_modified_timestamp = EXCLUDED.last_modified_timestamp;",
-                               (dataset['uuid'], dataset['last_modified_timestamp'],))
+                               (ds_uuid, ds_ts,))
                 cursor.execute("INSERT INTO sample_dataset (sample_uuid, dataset_uuid) VALUES(%s, %s);",
-                               (sample_uuid, dataset['uuid'],))
+                               (sample_uuid, ds_uuid,))
             self.postgresql_manager.commit()
         except (Exception, DatabaseError, UniqueViolation) as e:
             self.postgresql_manager.rollback()
