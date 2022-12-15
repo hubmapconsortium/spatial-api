@@ -38,11 +38,10 @@ def sample_rec_reindex(rec, config, bearer_token: str) -> None:
             cell_type_count_manager.close()
 
 
-def process_recs_thread(recs, config) -> None:
+def process_recs_thread(recs, config, authhelper_instance: AuthHelper) -> None:
     logger.info('Thread processing samples BEGIN')
-    auth_helper_instance = AuthHelper.instance()
     # Because the Bearer token from the front end request may possibly timeout.
-    bearer_token: str = auth_helper_instance.getProcessSecret()
+    bearer_token: str = authhelper_instance.getProcessSecret()
     for rec in recs:
         sample_uuid: str = rec['sample']['uuid']
         logger.info(f"process_recs for Sample_uuid: {sample_uuid}")
@@ -50,12 +49,24 @@ def process_recs_thread(recs, config) -> None:
     logger.info('Thread processing samples END')
 
 
+def get_authhelper_instance(config) -> AuthHelper:
+    """Since uwsgi workers run in different threads, we always need to check if an instance of the AuthHelper
+    existe before we try to get it.
+    """
+    app_config = config['app']
+    client_id: str = app_config.get('ClientId')
+    client_secret: str = app_config.get('ClientSecret')
+    if AuthHelper.isInitialized() is False:
+        return AuthHelper.create(client_id, client_secret)
+    return AuthHelper.instance()
+
+
 def start_process_recs_thread(recs, config) -> None:
     # https://stackoverflow.com/questions/63500768/how-to-work-with-background-threads-in-flask
     # https://smirnov-am.github.io/background-jobs-with-flask/
     thread = threading.Thread(target=process_recs_thread,
-                              args=[recs, config],
-                              name='process sample recs')
+                              args=[recs, config, get_authhelper_instance(config)],
+                              name='Process Recs Thread')
     # Setting thread.daemon = True will allow the main program to exit.
     # Apps normally wait till all child threads are finished before completing.
     thread.daemon = True

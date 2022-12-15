@@ -74,7 +74,7 @@ def create_app(testing=False):
     config.read(app_properties)
     app_config = config['app']
     try:
-        if AuthHelper.isInitialized() == False:
+        if AuthHelper.isInitialized() is False:
             AuthHelper.create(app_config.get('ClientId'), app_config.get('ClientSecret'))
             logger.info("Initialized AuthHelper class successfully :)")
     except Exception:
