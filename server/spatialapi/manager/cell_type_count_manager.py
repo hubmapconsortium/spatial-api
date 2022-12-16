@@ -146,17 +146,19 @@ class CellTypeCountManager(object):
     def begin_extract_cell_type_counts_for_sample_uuid(self,
                                                        bearer_token: str,
                                                        sample_uuid: str) -> None:
-        result: List[dict] =\
+        results: List[dict] =\
             self.neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid(sample_uuid)
         # Ingest will determine which files to process for the datasets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
-        if len(result) == 0:
+        if len(results) == 0:
             logger.info('begin_extract_cell_type_counts_for_sample_uuid: '
                         f'sample_uuid:{sample_uuid} has no datasets with rui location information')
             return
-        sample_datasets: list = [ds for ds in result if sample_uuid in ds]
+        sample_datasets: list = [ds for ds in results if sample_uuid in ds]
         datasets: dict = sample_datasets[0].get(sample_uuid)
         ds_uuids: list = datasets.keys()
+        logger.info(f'******** begin_extract_cell_type_counts_for_sample_uuid({sample_uuid}):'
+                    f' results: {results}; datasets: {datasets}; keys: {ds_uuids}')
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, ds_uuids
         )
