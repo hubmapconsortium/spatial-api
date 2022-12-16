@@ -157,16 +157,14 @@ class CellTypeCountManager(object):
         sample_datasets: list = [ds for ds in results if sample_uuid in ds]
         datasets: dict = sample_datasets[0].get(sample_uuid)
         ds_uuids: list = list(datasets.keys())
-        logger.info(f'******** begin_extract_cell_type_counts_for_sample_uuid({sample_uuid}):'
-                    f' results: {results}; datasets: {datasets}; keys: {ds_uuids}')
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, ds_uuids
         )
-        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid: saving datasets: {datasets}")
         try:
             cursor = self.postgresql_manager.new_cursor()
             for ds_uuid, ds_ts in datasets.items():
-                logger.info(f'begin_extract_cell_type_counts_for_sample_uuid: ds_uuid:{ds_uuid}; ds_ts:{ds_ts}')
+                logger.info(f'begin_extract_cell_type_counts_for_sample_uuid:'
+                            f' inserting into dataset and sample_dataset tables; ds_uuid: {ds_uuid} & ds_ts: {ds_ts}')
                 if ds_ts is None:
                     logger.info("begin_extract_cell_type_counts_for_sample_uuid;"
                                 f" invalid timestamp in datasets: {datasets}")
@@ -180,7 +178,8 @@ class CellTypeCountManager(object):
             self.postgresql_manager.commit()
         except (Exception, DatabaseError, UniqueViolation) as e:
             self.postgresql_manager.rollback()
-            logger.error(f'begin_extract_cell_type_counts_for_sample_uuid; Exception Type causing rollback: {e.__class__.__name__}: {e}')
+            logger.error('begin_extract_cell_type_counts_for_sample_uuid:'
+                         f' Exception Type causing rollback: {e.__class__.__name__}: {e}')
         finally:
             if cursor is not None:
                 cursor.close()
@@ -201,7 +200,8 @@ class CellTypeCountManager(object):
                         cursor.execute("SELECT * FROM cell_annotation_details WHERE cell_type_name = %(cell_type_name)s",
                                        {'cell_type_name': cell_type_name})
                         if cursor.fetchone() is None:
-                            logger.error(f"cell_type_name '{cell_type_name}' not found in 'cell_annotation_details' table")
+                            logger.error(f"cell_type_name '{cell_type_name}'"
+                                         " not found in 'cell_annotation_details' table")
                             self.save_unknown_cell_type_name(cell_type_name)
                         else:
                             verified_cell_type[cell_type_name] = cell_type_count
