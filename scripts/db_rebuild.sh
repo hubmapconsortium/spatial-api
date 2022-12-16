@@ -72,7 +72,6 @@ fi
 if [[ $INCREMENTAL_REINDEX -eq 1 ]]; then
   echo
   echo ">>> Extract cell_type_counts for modified samples..."
-  exit 1
   curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/incremental-reindex" \
     -H "Authorization: Bearer $BEARER_TOKEN"
   echo

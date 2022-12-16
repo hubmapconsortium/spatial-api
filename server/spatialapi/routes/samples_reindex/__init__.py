@@ -155,16 +155,15 @@ def samples_incremental_reindex():
         # Create a dict where the sample_uuid is the key to the sample_last_modified_timestamp value...
         sample_timestamp: dict = {row[0]: row[1] for row in sample_timestamp_list}
 
-        db_sample_datasets: List[dict] =\
-            db_retrieve_sample_datasets(postgresql_manager)
+        db_sample_datasets_all: List[dict] = db_retrieve_sample_datasets(postgresql_manager)
 
-        neo4j_sample_datasets: List[dict] =\
+        neo4j_sample_datasets_all: List[dict] =\
             neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid()
 
-        all_recs: List[dict] = neo4j_manager.query_all()
+        recs_all: List[dict] = neo4j_manager.query_all()
 
         recs: list = []
-        for rec in all_recs:
+        for rec in recs_all:
             sample_uuid: str = rec['sample']['uuid']
             sample_last_modified_timestamp: int = sample_timestamp.get(sample_uuid)
             # Reprocess the rec whose sample.last_modified_timestamp in Neo4J is greater than that in the database,
@@ -174,9 +173,14 @@ def samples_incremental_reindex():
                 recs.append(rec)
                 continue
             # also process recs whose dataset.last_modified_timestamp in Neo4J is greater than that in the database
-            db_sample_datasets: list = [ds for ds in db_sample_datasets if sample_uuid in ds]
+            db_sample_datasets: list = [ds for ds in db_sample_datasets_all if sample_uuid in ds]
+            neo4j_sample_datasets: list = [ds for ds in neo4j_sample_datasets_all if sample_uuid in ds]
+            logger.info('******** samples_incremental_reindex:'
+                        f' db_sample_datasets: {db_sample_datasets}; neo4j_sample_datasets: {neo4j_sample_datasets}')
+            if len(neo4j_sample_datasets) != len(db_sample_datasets):
+                recs.append(rec)
+                continue
             db_datasets: dict = db_sample_datasets[0].get(sample_uuid)
-            neo4j_sample_datasets: list = [ds for ds in neo4j_sample_datasets if sample_uuid in ds]
             neo4j_datasets: dict = neo4j_sample_datasets[0].get(sample_uuid)
             for neo4j_ds_uuid, neo4j_ds_ts in neo4j_datasets.items():
                 db_ds_ts = db_datasets.get(neo4j_ds_uuid)
