@@ -182,7 +182,10 @@ def samples_incremental_reindex():
                         f' sample_uuid: {sample_uuid}; '
                         f' db_datasets: {db_datasets};'
                         f' neo4j_datasets: {neo4j_datasets}')
-            if len(db_datasets) != len(neo4j_datasets):
+            # This query will only get samples with datasets as opposed to recs_all which has all samples...
+            if neo4j_datasets is None:
+                continue
+            if db_datasets is None or len(db_datasets) != len(neo4j_datasets):
                 recs.append(rec)
                 logger.debug(f'samples_incremental_reindex: Reindexing rec for sample_uuid: {sample_uuid}')
                 continue
