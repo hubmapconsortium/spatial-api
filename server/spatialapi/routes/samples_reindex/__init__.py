@@ -152,14 +152,14 @@ def samples_incremental_reindex():
             )
         # Create a dict where the sample_uuid is the key to the sample_last_modified_timestamp value...
         sample_timestamp: dict = {row[0]: row[1] for row in sample_timestamp_list}
-        logger.debug(f'samples_incremental_reindex: sample_timestamp: {sample_timestamp}')
+        # logger.debug(f'samples_incremental_reindex: sample_timestamp: {sample_timestamp}')
 
         db_sample_datasets_all: dict = db_retrieve_sample_datasets(postgresql_manager)
-        logger.debug(f'samples_incremental_reindex: db_sample_datasets_all: {db_sample_datasets_all}')
+        # logger.debug(f'samples_incremental_reindex: db_sample_datasets_all: {db_sample_datasets_all}')
 
         neo4j_sample_datasets_all: dict =\
             neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid()
-        logger.debug(f'samples_incremental_reindex: neo4j_sample_datasets_all: {neo4j_sample_datasets_all}')
+        # logger.debug(f'samples_incremental_reindex: neo4j_sample_datasets_all: {neo4j_sample_datasets_all}')
 
         recs_all: List[dict] = neo4j_manager.query_all()
 
@@ -167,8 +167,8 @@ def samples_incremental_reindex():
         for rec in recs_all:
             sample_uuid: str = rec['sample']['uuid']
             sample_last_modified_timestamp: int = sample_timestamp.get(sample_uuid)
-            logger.debug(f'samples_incremental_reindex: sample_uuid: {sample_uuid};'
-                         f' sample_last_modified_timestamp: {sample_last_modified_timestamp}')
+            # logger.debug(f'samples_incremental_reindex: sample_uuid: {sample_uuid};'
+            #              f' sample_last_modified_timestamp: {sample_last_modified_timestamp}')
             # Reprocess the rec whose sample.last_modified_timestamp in Neo4J is greater than that in the database,
             # or if the sample does not exist in the database...
             if sample_last_modified_timestamp is None or\
@@ -178,10 +178,10 @@ def samples_incremental_reindex():
                 continue
             neo4j_datasets: dict = neo4j_sample_datasets_all.get(sample_uuid)
             db_datasets: dict = db_sample_datasets_all.get(sample_uuid)
-            logger.info('******** samples_incremental_reindex:'
-                        f' sample_uuid: {sample_uuid}; '
-                        f' db_datasets: {db_datasets};'
-                        f' neo4j_datasets: {neo4j_datasets}')
+            # logger.info('******** samples_incremental_reindex:'
+            #             f' sample_uuid: {sample_uuid}; '
+            #             f' db_datasets: {db_datasets};'
+            #             f' neo4j_datasets: {neo4j_datasets}')
             # This query will only get samples with datasets as opposed to recs_all which has all samples...
             if neo4j_datasets is None:
                 continue
