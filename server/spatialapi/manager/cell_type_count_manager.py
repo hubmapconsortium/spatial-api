@@ -146,7 +146,7 @@ class CellTypeCountManager(object):
     def begin_extract_cell_type_counts_for_sample_uuid(self,
                                                        bearer_token: str,
                                                        sample_uuid: str) -> None:
-        neo4j_sample_datasets: List[dict] =\
+        neo4j_sample_datasets: dict =\
             self.neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid(sample_uuid)
         # Ingest will determine which files to process for the datasets in a thread which posts the data back
         # on another call. The 'cell_type_counts' from that is used in 'finish_update_sample_uuid' below.
@@ -154,11 +154,9 @@ class CellTypeCountManager(object):
             logger.info('begin_extract_cell_type_counts_for_sample_uuid: '
                         f'sample_uuid:{sample_uuid} has no datasets with rui location information')
             return
-        sample_datasets: list = [ds for ds in neo4j_sample_datasets if sample_uuid in ds]
-        datasets: dict = sample_datasets[0].get(sample_uuid)
-        ds_uuids: list = list(datasets.keys())
+        datasets: dict = neo4j_sample_datasets.get(sample_uuid)
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
-            bearer_token, sample_uuid, ds_uuids
+            bearer_token, sample_uuid, list(datasets.keys())
         )
         try:
             cursor = self.postgresql_manager.new_cursor()

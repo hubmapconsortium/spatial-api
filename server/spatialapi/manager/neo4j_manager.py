@@ -127,12 +127,13 @@ class Neo4jManager(object):
             cypher_common_match + cypher_common_where + f" AND s.uuid = '{sample_uuid}'" + cypher_common_return
         return self.query_with_cypher(cypher)
 
-    def retrieve_datasets_that_have_rui_location_information_for_sample_uuid(self, sample_uuid=None) -> List[dict]:
-        """Return a list of dictionaries where the sample_uuid is the key,
-        and the value is a dictionary of the form key:dataset_uuid, value:dataset_timestamp
-        for each dataset associated with that sample.
+    def retrieve_datasets_that_have_rui_location_information_for_sample_uuid(self, sample_uuid=None) -> dict:
+        """Return a dictionary of the form:
+        {sample_uuid_0: {dataset_uuid_0: dataset_timestamp_0, ..., dataset_uuid_n: dataset_timestamp_n} ...}
+        Here the 'sample_uuid' is the key and the value is a dictionary of the form
+        key:dataset_uuid, value:dataset_timestamp for each dataset associated with that sample_uuid.
         """
-        datasets: List[dict] = []
+        datasets: dict = {}
         cypher: str = cypher_common_match + cypher_common_where
         if sample_uuid is not None:
             cypher += f" AND s.uuid = '{sample_uuid}'"
@@ -153,11 +154,10 @@ class Neo4jManager(object):
                 ds_last_modified_timestamp: int = result.get('ds_last_modified_timestamp')
                 if ds_uuid is not None and ds_last_modified_timestamp is not None:
                     ds_entry: dict = {ds_uuid: ds_last_modified_timestamp}
-                    ds_sample_uuid_list: list = [ds for ds in datasets if sample_uuid in ds]
-                    if len(ds_sample_uuid_list) == 0:
-                        datasets.append({sample_uuid: ds_entry})
+                    if sample_uuid not in datasets:
+                        datasets[sample_uuid] = ds_entry
                     else:
-                        ds_entries: dict = ds_sample_uuid_list[0].get(sample_uuid)
+                        ds_entries: dict = datasets.get(sample_uuid)
                         ds_entries.update(ds_entry)
         if len(datasets) == 0:
             logger.info('retrieve_datasets_that_have_rui_location_information_for_sample_uuid:'

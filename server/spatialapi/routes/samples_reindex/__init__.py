@@ -1,4 +1,4 @@
-from flask import Blueprint, request, make_response
+from flask import Blueprint, make_response
 import configparser
 from http import HTTPStatus
 from typing import List
@@ -16,6 +16,18 @@ from spatialapi.utils import json_error, sample_uuid_validation
 logger = logging.getLogger(__name__)
 
 samples_reindex_blueprint = Blueprint('samples_reindex_blueprint', __name__)
+
+
+def get_authhelper_instance(config) -> AuthHelper:
+    """Since uwsgi workers run in different threads, we always need to check if an instance of the AuthHelper
+    exists before we try to get it.
+    """
+    app_config = config['app']
+    client_id: str = app_config.get('ClientId')
+    client_secret: str = app_config.get('ClientSecret')
+    if AuthHelper.isInitialized() is False:
+        return AuthHelper.create(client_id, client_secret)
+    return AuthHelper.instance()
 
 
 def sample_rec_reindex(rec, config, bearer_token: str) -> None:
@@ -38,34 +50,20 @@ def sample_rec_reindex(rec, config, bearer_token: str) -> None:
             cell_type_count_manager.close()
 
 
-def process_recs_thread(recs, config, authhelper_instance: AuthHelper) -> None:
+def process_recs_thread(recs, config, bearer_token: str) -> None:
     logger.info('Thread processing samples BEGIN')
-    # Because the Bearer token from the front end request may possibly timeout.
-    bearer_token: str = authhelper_instance.getProcessSecret()
     for rec in recs:
         sample_uuid: str = rec['sample']['uuid']
-        logger.info(f"process_recs for Sample_uuid: {sample_uuid}")
+        logger.info(f"process_recs_thread: sample_uuid: {sample_uuid}")
         sample_rec_reindex(rec, config, bearer_token)
     logger.info('Thread processing samples END')
 
 
-def get_authhelper_instance(config) -> AuthHelper:
-    """Since uwsgi workers run in different threads, we always need to check if an instance of the AuthHelper
-    existe before we try to get it.
-    """
-    app_config = config['app']
-    client_id: str = app_config.get('ClientId')
-    client_secret: str = app_config.get('ClientSecret')
-    if AuthHelper.isInitialized() is False:
-        return AuthHelper.create(client_id, client_secret)
-    return AuthHelper.instance()
-
-
-def start_process_recs_thread(recs, config) -> None:
+def start_process_recs_thread(recs, config, bearer_token: str) -> None:
     # https://stackoverflow.com/questions/63500768/how-to-work-with-background-threads-in-flask
     # https://smirnov-am.github.io/background-jobs-with-flask/
     thread = threading.Thread(target=process_recs_thread,
-                              args=[recs, config, get_authhelper_instance(config)],
+                              args=[recs, config, bearer_token],
                               name='Process Recs Thread')
     # Setting thread.daemon = True will allow the main program to exit.
     # Apps normally wait till all child threads are finished before completing.
@@ -85,12 +83,7 @@ def samples_reindex(sample_uuid):
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    bearer: str = request.headers.get('Authorization', None)
-    if bearer is None or len(bearer.split()) != 2:
-        return make_response("Authorization Bearer token not presented", HTTPStatus.UNAUTHORIZED)
-    bearer_token = bearer.split()[1]
-    logger.info(f"Bearer Token: {bearer_token}")
-
+    neo4j_manager = None
     try:
         neo4j_manager = Neo4jManager(config)
 
@@ -99,18 +92,22 @@ def samples_reindex(sample_uuid):
             return make_response(f'Neo4j returned multiple records for sample_uuid: {sample_uuid}',
                                   HTTPStatus.FAILED_DEPENDENCY)
 
+        # Because the Bearer token from the front end request may possibly timeout.
+        bearer_token: str = get_authhelper_instance(config).getProcessSecret()
         sample_rec_reindex(rec[0], config, bearer_token)
     finally:
-        neo4j_manager.close()
+        if neo4j_manager is not None:
+            neo4j_manager.close()
 
     # Because it will take time for the cell_type_counts to be processed...
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
 
 
-def db_retrieve_sample_datasets(postgresql_manager: PostgresqlManager) -> List[dict]:
-    """Return a list of dictionaries where the sample_uuid is the key,
-    and the value is a dictionary of the form k:dataset_uuid, v:dataset_timestamp
-    for each dataset associated with that sample.
+def db_retrieve_sample_datasets(postgresql_manager: PostgresqlManager) -> dict:
+    """Return a dictionary of the form:
+    {sample_uuid_0: {dataset_uuid_0: dataset_timestamp_0, ..., dataset_uuid_n: dataset_timestamp_n} ...}
+    Here the 'sample_uuid' is the key and the value is a dictionary of the form
+    key:dataset_uuid, value:dataset_timestamp for each dataset associated with that sample_uuid.
     """
     rows: list = \
         postgresql_manager.select_all(
@@ -121,15 +118,14 @@ def db_retrieve_sample_datasets(postgresql_manager: PostgresqlManager) -> List[d
             " INNER JOIN sample_dataset"
             " ON dataset.uuid = sample_dataset.dataset_uuid;"
         )
-    datasets: List[dict] = []
+    datasets: dict = {}
     for row in rows:
         sample_uuid: str = row[0]
         ds_entry: dict = {row[1]: row[2]}
-        ds_sample_uuid_list: list = [ds for ds in datasets if sample_uuid in ds]
-        if len(ds_sample_uuid_list) == 0:
-            datasets.append({sample_uuid: ds_entry})
+        if sample_uuid not in datasets:
+            datasets[sample_uuid] = ds_entry
         else:
-            ds_entries: dict = ds_sample_uuid_list[0][sample_uuid]
+            ds_entries: dict = datasets.get(sample_uuid)
             ds_entries.update(ds_entry)
     return datasets
 
@@ -143,6 +139,8 @@ def samples_incremental_reindex():
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
+    neo4j_manager = None
+    postgresql_manager = None
     try:
         # TODO: Break this off into a thread because there is a lot of computation going on here...
         neo4j_manager = Neo4jManager(config)
@@ -156,13 +154,12 @@ def samples_incremental_reindex():
         sample_timestamp: dict = {row[0]: row[1] for row in sample_timestamp_list}
         logger.debug(f'samples_incremental_reindex: sample_timestamp: {sample_timestamp}')
 
-        db_sample_datasets_all: List[dict] = db_retrieve_sample_datasets(postgresql_manager)
+        db_sample_datasets_all: dict = db_retrieve_sample_datasets(postgresql_manager)
         logger.debug(f'samples_incremental_reindex: db_sample_datasets_all: {db_sample_datasets_all}')
 
-        neo4j_sample_datasets_all: List[dict] =\
+        neo4j_sample_datasets_all: dict =\
             neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid()
         logger.debug(f'samples_incremental_reindex: neo4j_sample_datasets_all: {neo4j_sample_datasets_all}')
-
 
         recs_all: List[dict] = neo4j_manager.query_all()
 
@@ -171,7 +168,7 @@ def samples_incremental_reindex():
             sample_uuid: str = rec['sample']['uuid']
             sample_last_modified_timestamp: int = sample_timestamp.get(sample_uuid)
             logger.debug(f'samples_incremental_reindex: sample_uuid: {sample_uuid};'
-                        f' sample_last_modified_timestamp: {sample_last_modified_timestamp}')
+                         f' sample_last_modified_timestamp: {sample_last_modified_timestamp}')
             # Reprocess the rec whose sample.last_modified_timestamp in Neo4J is greater than that in the database,
             # or if the sample does not exist in the database...
             if sample_last_modified_timestamp is None or\
@@ -179,18 +176,16 @@ def samples_incremental_reindex():
                 recs.append(rec)
                 logger.debug(f'samples_incremental_reindex: Reindexing rec for sample_uuid: {sample_uuid}')
                 continue
-            # also process recs whose dataset.last_modified_timestamp in Neo4J is greater than that in the database
-            db_sample_datasets: list = [ds for ds in db_sample_datasets_all if sample_uuid in ds]
-            neo4j_sample_datasets: list = [ds for ds in neo4j_sample_datasets_all if sample_uuid in ds]
+            neo4j_datasets: dict = neo4j_sample_datasets_all.get(sample_uuid)
+            db_datasets: dict = db_sample_datasets_all.get(sample_uuid)
             logger.info('******** samples_incremental_reindex:'
                         f' sample_uuid: {sample_uuid}; '
-                        f' db_sample_datasets: {db_sample_datasets}; neo4j_sample_datasets: {neo4j_sample_datasets}')
-            if len(neo4j_sample_datasets) != len(db_sample_datasets):
+                        f' db_datasets: {db_datasets};'
+                        f' neo4j_datasets: {neo4j_datasets}')
+            if len(db_datasets) != len(neo4j_datasets):
                 recs.append(rec)
                 logger.debug(f'samples_incremental_reindex: Reindexing rec for sample_uuid: {sample_uuid}')
                 continue
-            db_datasets: dict = db_sample_datasets[0].get(sample_uuid)
-            neo4j_datasets: dict = neo4j_sample_datasets[0].get(sample_uuid)
             for neo4j_ds_uuid, neo4j_ds_ts in neo4j_datasets.items():
                 db_ds_ts = db_datasets.get(neo4j_ds_uuid)
                 if db_ds_ts is None:
@@ -203,10 +198,14 @@ def samples_incremental_reindex():
                     logger.debug(f'samples_incremental_reindex: Reindexing rec for sample_uuid: {sample_uuid}')
         logger.info(f"samples_incremental_reindex: records to be reindexed: {len(recs)}")
 
-        start_process_recs_thread(recs, config)
+        # Because the Bearer token from the front end request may possibly timeout.
+        bearer_token: str = get_authhelper_instance(config).getProcessSecret()
+        start_process_recs_thread(recs, config, bearer_token)
     finally:
-        neo4j_manager.close()
-        postgresql_manager.close()
+        if neo4j_manager is not None:
+            neo4j_manager.close()
+        if postgresql_manager is not None:
+            postgresql_manager.close()
 
     # Because it will take time for the cell_type_counts to be processed...
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
@@ -222,14 +221,18 @@ def samples_reindex_all():
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
+    neo4j_manager = None
     try:
         neo4j_manager = Neo4jManager(config)
         recs: List[dict] = neo4j_manager.query_all()
         logger.debug(f"Records found: {len(recs)}")
 
-        start_process_recs_thread(recs, config)
+        # Because the Bearer token from the front end request may possibly timeout.
+        bearer_token: str = get_authhelper_instance(config).getProcessSecret()
+        start_process_recs_thread(recs, config, bearer_token)
     finally:
-        neo4j_manager.close()
+        if neo4j_manager is not None:
+            neo4j_manager.close()
 
     # Because it will take time for the cell_type_counts to be processed...
     return make_response('Processing begun', HTTPStatus.ACCEPTED)
