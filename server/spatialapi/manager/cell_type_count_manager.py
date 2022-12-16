@@ -171,7 +171,8 @@ class CellTypeCountManager(object):
                                "ON CONFLICT (uuid) DO UPDATE "
                                "SET last_modified_timestamp = EXCLUDED.last_modified_timestamp;",
                                (ds_uuid, ds_ts,))
-                cursor.execute("INSERT INTO sample_dataset (sample_uuid, dataset_uuid) VALUES(%s, %s);",
+                cursor.execute("INSERT INTO sample_dataset (sample_uuid, dataset_uuid) VALUES(%s, %s) "
+                               "ON CONFLICT (sample_dataset_pkey) DO NOTHING;",
                                (sample_uuid, ds_uuid,))
             self.postgresql_manager.commit()
         except (Exception, DatabaseError, UniqueViolation) as e:
