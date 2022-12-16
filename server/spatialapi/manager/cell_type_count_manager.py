@@ -162,10 +162,11 @@ class CellTypeCountManager(object):
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
             bearer_token, sample_uuid, ds_uuids
         )
-        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid; saving datasets: {datasets[0]}")
+        logger.info(f"begin_extract_cell_type_counts_for_sample_uuid: saving datasets: {datasets}")
         try:
             cursor = self.postgresql_manager.new_cursor()
             for ds_uuid, ds_ts in datasets.items():
+                logger.info(f'begin_extract_cell_type_counts_for_sample_uuid: ds_uuid:{ds_uuid}; ds_ts:{ds_ts}')
                 if ds_ts is None:
                     logger.info("begin_extract_cell_type_counts_for_sample_uuid;"
                                 f" invalid timestamp in datasets: {datasets}")
