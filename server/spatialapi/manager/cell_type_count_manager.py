@@ -156,7 +156,7 @@ class CellTypeCountManager(object):
             return
         sample_datasets: list = [ds for ds in results if sample_uuid in ds]
         datasets: dict = sample_datasets[0].get(sample_uuid)
-        ds_uuids: list = datasets.keys()
+        ds_uuids: list = list(datasets.keys())
         logger.info(f'******** begin_extract_cell_type_counts_for_sample_uuid({sample_uuid}):'
                     f' results: {results}; datasets: {datasets}; keys: {ds_uuids}')
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
