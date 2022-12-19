@@ -83,7 +83,7 @@ def samples_reindex(sample_uuid):
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    neo4j_manager = None
+    neo4j_manager: Neo4jManager = None
     try:
         neo4j_manager = Neo4jManager(config)
 
@@ -140,10 +140,9 @@ def samples_incremental_reindex():
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    neo4j_manager = None
-    postgresql_manager = None
+    neo4j_manager: Neo4jManager = None
+    postgresql_manager: PostgresqlManager = None
     try:
-        # TODO: Break this off into a thread because there is a lot of computation going on here...
         neo4j_manager = Neo4jManager(config)
         postgresql_manager = PostgresqlManager(config)
 
@@ -182,7 +181,7 @@ def samples_incremental_reindex():
                 logger.debug(f'samples_incremental_reindex: Reindexing rec for sample_uuid: {sample_uuid}')
                 continue
             for neo4j_ds_uuid, neo4j_ds_ts in neo4j_datasets.items():
-                db_ds_ts = db_datasets.get(neo4j_ds_uuid)
+                db_ds_ts: int = db_datasets.get(neo4j_ds_uuid)
                 if db_ds_ts is None:
                     # neo4j dataset NEW since we last processed the sample
                     recs.append(rec)
@@ -216,7 +215,7 @@ def samples_reindex_all():
     logger.info(f'Reading properties file: {app_properties}')
     config.read(app_properties)
 
-    neo4j_manager = None
+    neo4j_manager: Neo4jManager = None
     try:
         neo4j_manager = Neo4jManager(config)
         recs: List[dict] = neo4j_manager.query_all()
