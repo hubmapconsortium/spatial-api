@@ -54,6 +54,44 @@ class Geom(object):
         self.postgresql_manager.close()
         self.spatial_manager.close()
 
+    def geom_check(self, id: int = None) -> None:
+        logger.info(f'Determine if geometries are: closed, solids, and have the correct volume...')
+        # NOTE: ST_IsValid(sample_geom) does not support POLYHEDRALSURFACE.
+        sql: str = 'SELECT' \
+                   ' sample_hubmap_id, sample_rui_location, ST_IsClosed(sample_geom),' \
+                   ' ST_Volume(sample_geom), ST_3DArea(sample_geom), ST_IsSolid(sample_geom)' \
+                   f' FROM {self.table}'
+        if id is not None:
+            sql += f' WHERE id = %(id)s'
+            logger.info(f'Checking geometry with id = {id}.')
+        else:
+            logger.info('Checking all geometries.')
+        sql += ';'
+        results: list = self.postgresql_manager.select_all(sql, {'id': id})
+        logger.info(f'Checking {len(results)} geometries!')
+        for result in results:
+            sample_hubmap_id: str = result[0]
+            sample_rui_location: dict = json.loads(result[1])
+            placement: dict = sample_rui_location['placement']
+            sample_rui_location_volume: float = \
+                sample_rui_location["x_dimension"] * placement['x_scaling'] \
+                * sample_rui_location["y_dimension"] * placement['y_scaling'] \
+                * sample_rui_location["z_dimension"] * placement['z_scaling']
+            sample_rui_location_volume = round(sample_rui_location_volume, 0)
+            is_closed: str = result[2]
+            # ST_Volume — Computes the volume of a 3D solid. If applied to surface (even closed) geometries will return 0.
+            st_volume: float = round(float(result[3]), 0)
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            st_3darea: float = result[4]
+            if is_closed is not True:
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; IS NOT CLOSED!')
+            if sample_rui_location_volume != st_volume:
+                logger.error(
+                    f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
+            # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
+            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
+            if st_3darea != 0:
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; ST_3DArea should return 0 for solids!')
 
     # Since the object is created with its centroid at <0, 0, 0> the only location data that matters is the translation.
     def centroid_from_sample_rui_location(self,
@@ -200,7 +238,7 @@ Finally, compare the lists returned. ''',
 
     try:
         if args.geom_check:
-            manager.spatial_manager.geom_check()
+            manager.geom_check()
         else:
             manager.distance_check(args.relative_spatial_entry_iri, args.radius)
     finally:

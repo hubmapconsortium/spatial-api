@@ -40,8 +40,9 @@ class Neo4jManager(object):
             }
             donor_metadata: str = record.get('donor_metadata')
             if donor_metadata is None:
-                logger.info(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
+                logger.error(f"Error there is no donor_metadata for record with sample_hubmap_id: {record['sample_hubmap_id']}")
                 return None
+            donor_metadata = donor_metadata.replace("'", '"')
             organ_donor_data: dict = json.loads(donor_metadata)
 
             organ_donor_data_list: List[dict] = organ_donor_data['organ_donor_data']
@@ -53,12 +54,12 @@ class Neo4jManager(object):
                 rui_location: str = record.get('sample_rui_location')
                 rui_location_json: dict = literal_eval(rui_location)
             except (SyntaxError, ValueError) as e:
-                logger.info(f'Error literal_eval parsing: {record}')
+                logger.error(f'Error literal_eval parsing: {record}; error: {e}')
                 return None
 
             if rui_location_json['@type'] != 'SpatialEntity' and \
                     rui_location_json['placement']['@type'] != 'SpatialPlacement':
-                logger.info(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
+                logger.error(f'Error @type is not SpatialEntry, or placement.@type is not SpatialPlacement: {record}')
                 return None
 
             sample: dict = {
@@ -73,7 +74,8 @@ class Neo4jManager(object):
                 'donor': donor
             }
             return rec
-        except KeyError:
+        except KeyError as e:
+            logger.error(f"Key error: {e}")
             return None
 
     def query_with_cypher(self, cypher: str) -> List[dict]:
@@ -83,11 +85,11 @@ class Neo4jManager(object):
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
             for record in results:
-                results_n = results_n + 1
                 processed_rec: dict = self.process_record(record)
                 #import pdb; pdb.set_trace()
                 if processed_rec is not None:
                     recs.append(processed_rec)
+                    results_n = results_n + 1
                 else:
                     bad_parse_n = bad_parse_n + 1
         logger.info(f'results: {results_n}; Parse Errors: {bad_parse_n}')
@@ -95,10 +97,12 @@ class Neo4jManager(object):
 
     def query_all(self) -> List[dict]:
         cypher: str =\
-            "MATCH (s:Sample)<-[*]-(organ:Sample {specimen_type:'organ'})" \
-            " WHERE exists(s.rui_location) AND s.rui_location <> ''" \
-            " RETURN s.uuid AS uuid, s.hubmap_id AS hubmap_id, s.specimen_type AS specimen_type," \
-            " organ.organ AS organ_name, organ.uuid AS organ_uuid, s.rui_location AS rui_location"
+            "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
+            f" WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''" \
+            " RETURN distinct s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
+            " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+            " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
+            " o.uuid as organ_uuid, o.organ as organ_code"
         return self.query_with_cypher(cypher)
 
     def query_organ(self, organ: str) -> List[dict]:
@@ -147,7 +151,7 @@ class Neo4jManager(object):
                     recs.append(processed_rec)
         return recs
 
-    def retrieve_ds_uuids_with_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
+    def retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid(self, sample_uuid: str) -> List[str]:
         ds_uuids: List[dict] = []
         cypher: str = \
             "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)" \
@@ -163,6 +167,8 @@ class Neo4jManager(object):
                 ds_uuid: str = record.get('ds_uuid')
                 if ds_uuid is not None:
                     ds_uuids.append(ds_uuid)
+        if len(ds_uuids) == 0:
+            logger.info(f'retrieve_ds_uuids_that_have_rui_location_information_for_sample_uuid: ZERO ds_uuids found for sample_uuid {sample_uuid}')
         return ds_uuids
 
     def query_right_kidney(self) -> List[dict]:

@@ -31,7 +31,7 @@ echo ">>> Testing spatialapi endpoint search_hubmap_point..."
 echo
 
 curl $VERBOSE --request POST \
- --url ${SCHEME_HOST_PORT}/spatial-search/point \
+ --url ${SCHEME_HOST_PORT}/point-search \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHMale",
@@ -45,7 +45,7 @@ echo ">>> These should fail validation..."
 echo
 
 curl $VERBOSE --request POST \
- --url ${SCHEME_HOST_PORT}/spatial-search/point \
+ --url ${SCHEME_HOST_PORT}/point-search \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHBird",
@@ -55,7 +55,7 @@ curl $VERBOSE --request POST \
 echo
 
 curl $VERBOSE --request POST \
- --url ${SCHEME_HOST_PORT}/spatial-search/point \
+ --url ${SCHEME_HOST_PORT}/point-search \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHMale",
@@ -65,7 +65,7 @@ curl $VERBOSE --request POST \
 echo
 
 curl $VERBOSE --request POST \
- --url ${SCHEME_HOST_PORT}/spatial-search/point \
+ --url ${SCHEME_HOST_PORT}/point-search \
  --header 'Content-Type: application/json' \
  --data '{
   "target": "VHMale",

@@ -15,7 +15,6 @@ RUN pip install -r requirements.txt
 WORKDIR /app/server
 COPY server/spatialapi spatialapi
 #ENV PYTHONPATH="${PYTHONPATH}:/app/server"
-
 COPY server/uwsgi.ini .
 COPY server/wsgi.py .
 

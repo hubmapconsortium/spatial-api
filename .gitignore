@@ -6,3 +6,6 @@ venv/
 server/resources/app.properties
 server/resources/app.local.properties
 scripts/psc/*.json
+BUILD
+server/BUILD
+server/VERSION

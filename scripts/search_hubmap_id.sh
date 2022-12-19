@@ -30,14 +30,14 @@ echo
 echo ">>> Testing spatialapi endpoint search_hubmap_id on $SCHEME_HOST_PORT..."
 echo
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/17/target/VHMale"
+curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap-id/HBM634.MMGK.572/radius/17/target/VHMale"
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/0.01/target/VHFemale"
+curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap-id/HBM634.MMGK.572/radius/0.01/target/VHFemale"
 
 echo
 echo ">>> These should fail validation..."
 echo
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/one/target/VHFemale"
+curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap-id/HBM634.MMGK.572/radius/one/target/VHFemale"
 
-curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap_id/HBM634.MMGK.572/radius/0.01/target/VHBird"
+curl $VERBOSE -si "${SCHEME_HOST_PORT}/search/hubmap-id/HBM634.MMGK.572/radius/0.01/target/VHBird"

@@ -1,19 +1,32 @@
 import logging
 from typing import List
-from spatialapi.manager.neo4j_manager import Neo4jManager
-from spatialapi.manager.postgresql_manager import PostgresqlManager
-from spatialapi.manager.spatial_placement_manager import SpatialPlacementManager
 from flask import abort
-from spatialapi.utils import json_error
-from http import HTTPStatus
 import json
 import configparser
-import random
+import copy
+
+from spatialapi.manager.neo4j_manager import Neo4jManager
+from spatialapi.manager.postgresql_manager import PostgresqlManager
+from spatialapi.manager.spatial_placement_manager import SpatialPlacementManager, adjust_placement_target_if_necessary
+from spatialapi.utils import json_error
 
 logger = logging.getLogger(__name__)
 
 
+def _donor_sex_to_target_iri(donor_sex: str) -> str:
+    target_iri: str = None
+    if donor_sex == 'male':
+        target_iri = 'VHMale'
+    elif donor_sex == 'female':
+        target_iri = 'VHFemale'
+    else:
+        # TODO: Throw error
+        Pass
+    return target_iri
+
+
 class SpatialManager(object):
+    # TODO: Nothing is being done with units.
 
     def __init__(self, config):
         self.neo4j_manager = Neo4jManager(config)
@@ -25,9 +38,10 @@ class SpatialManager(object):
         logger.info(f'{self.__class__.__name__}: Table: {self.table}')
 
     def close(self):
-        logger.info(f'Neo4jManager: Closing connection to Neo4J & PostgreSQL')
+        logger.info(f'SpatialManager: Closing')
         self.neo4j_manager.close()
         self.postgresql_manager.close()
+        self.spatial_placement_manager.close()
 
     # Example from https://postgis.net/docs/ST_IsClosed.html
     # There is a winding order for surfaces: inside->clockwise, outside -> counterclockwise.
@@ -132,7 +146,7 @@ class SpatialManager(object):
                f" {placement['x_scaling']}, {placement['y_scaling']}, {placement['z_scaling']})," \
                f" {placement['x_translation']}, {placement['y_translation']}, {placement['z_translation']})"
 
-    def create_sql_upsert(self, target_iri: str, rec: dict) -> str:
+    def create_sample_rec_sql_upsert(self, target_iri: str, rec: dict) -> str:
         organ_uuid: str = rec['organ']['uuid']
         organ_code: str = rec['organ']['code']
         donor_uuid: str = rec['donor']['uuid']
@@ -155,82 +169,19 @@ class SpatialManager(object):
                f" sample_specimen_type = '{sample_specimen_type}', sample_rui_location = '{sample_rui_location}'," \
                f" sample_geom = {sample_geom}" \
                " RETURNING id;"
+    
+    def create_sample_rec_sql_upsert_placement_relative_to_body(self, rec: dict) -> str:
+        target_iri = _donor_sex_to_target_iri(rec['donor']['sex'].lower())
+        logger.debug(f"Creating sql upsert placement relative to body with target_iri: {target_iri}")
+        
+        rec_new = copy.deepcopy(rec)
+        adjust_placement_target_if_necessary(rec_new)
+        rec_new['sample']['rui_location']['placement'] = \
+            self.spatial_placement_manager.placement_relative_to_target(target_iri, rec['sample']['rui_location'])
+        logger.debug(f"Creating sql upsert placement relative to body with placement: {rec_new}")
+        return self.create_sample_rec_sql_upsert(target_iri, rec_new)
 
-    def upsert_rec(self, target_iri: str, rec: dict) -> None:
-        sql_insert_statement: str = self.create_sql_upsert(target_iri, rec)
-        id: int = self.postgresql_manager.insert(sql_insert_statement)
-        logger.info(f"Inserting geom record as; id={id}")
-
-    # def upsert_rec(self, target_iri: str, rec: dict) -> None:
-    #     self.postgresql_manager.add_sample(
-    #         rec['organ']['uuid'], rec['organ']['code'], rec['donor']['uuid'], rec['donor']['sex'],
-    #         target_iri, rec['sample']['uuid'], rec['sample']['hubmap_id'], rec['sample']['specimen_type'],
-    #         json.dumps(rec['sample']['rui_location']),
-    #         self.create_geometry(rec['sample']['rui_location'])
-    #     )
-    #     logger.info(f"Inserting sample record")
-
-    def insert_rec_with_placement_at_target(self, target: str, rec: dict) -> None:
-        placement: dict = \
-            self.spatial_placement_manager.placement_relative_to_target(target, rec['sample']['rui_location'])
-        rec['sample']['rui_location']['placement'] = placement
-        self.upsert_rec(target, rec)
-
-    # With patch to fix RUI 0.5 Kidney and Spleen Placements found at:
-    # https://github.com/hubmapconsortium/ccf-ui/blob/main/projects/ccf-database/src/lib/hubmap/hubmap-data.ts#L447-L462
-    def adjust_placement_target_if_necessary(self, rec) -> dict:
-        rui_location: dict = rec['sample']['rui_location']
-        donor_sex = rec['donor']['sex'].lower()
-        placement_target: str = rui_location['placement']['target']
-        if placement_target.startswith('http://purl.org/ccf/latest/ccf.owl#VHSpleenCC'):
-            if donor_sex == 'male':
-                rui_location['placement']['target'].replace('#VHSpleenCC', '#VHMSpleenCC')
-            else:
-                rui_location['placement']['target'].replace('#VHSpleenCC', '#VHFSpleenCC')
-        elif placement_target.startswith('http://purl.org/ccf/latest/ccf.owl#VHLeftKidney') or \
-            placement_target.startswith('http://purl.org/ccf/latest/ccf.owl#VHRightKidney'):
-            if donor_sex == 'male':
-                rui_location['placement']['target'] = placement_target.replace('#VH', '#VHM') + '_Patch'
-            else:
-                rui_location['placement']['target'] = placement_target.replace('#VH', '#VHMF') + '_Patch'
-        return rec
-
-    def insert_rec_relative_to_spatial_entry_iri(self, rec: dict) -> None:
-        donor_sex: str = rec['donor']['sex'].lower()
-        if donor_sex == 'male':
-            self.insert_rec_with_placement_at_target('VHMale', self.adjust_placement_target_if_necessary(rec))
-        if donor_sex == 'female':
-            self.insert_rec_with_placement_at_target('VHFemale', self.adjust_placement_target_if_necessary(rec))
-
-    def insert_organ_data(self, organ: str) -> None:
-        logger.info(f"Inserting data for organ: {organ}")
-        recs: List[dict] = self.neo4j_manager.query_organ(organ)
-        for rec in recs:
-            # TODO: Need only one line per sample, so the geom data should be normalized.
-            self.upsert_rec(rec['organ']['code'], rec)
-            self.insert_rec_relative_to_spatial_entry_iri(rec)
-
-    def upsert_sample_uuid_data(self, sample_uuid: str) -> None:
-        logger.info(f"Upserting data for sample uuid: {sample_uuid}")
-        recs: List[dict] = self.neo4j_manager.query_sample_uuid(sample_uuid)
-        if len(recs) == 0:
-            abort(json_error(f'The Neo4J query for the sample uuid ({sample_uuid}) returned no results', HTTPStatus.NOT_FOUND))
-        if len(recs) > 1:
-            abort(json_error(f'The Neo4J query for the sample uuid ({sample_uuid}) returned multiple entries', HTTPStatus.CONFLICT))
-        rec: dict = recs[0]
-        self.upsert_rec(rec['organ']['code'], rec)
-        self.insert_rec_relative_to_spatial_entry_iri(rec)
-
-    def find_within_radius_at_origin(self, radius: float, x: float, y: float, z: float) -> List[str]:
-        sql: str =\
-            f"""SELECT sample_hubmap_id FROM {self.table}
-            WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
-            """
-        return self.postgresql_manager.select(sql, {
-            'radius': radius,
-            'x': x, 'y': y, 'z': z
-        })
-
+    # Used by: "POST /point-search
     def find_relative_to_spatial_entry_iri_within_radius_from_point(self,
                                                                     spatial_entry_iri: str,
                                                                     radius: float,
@@ -270,115 +221,7 @@ class SpatialManager(object):
         #logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
 
-    def list_to_rec_for_debugging(self, l: list) -> dict:
-        rec: dict = {}
-        rec['id'] = l[0]
-        rec['organ'] = {}
-        rec['organ']['uuid'] = l[1]
-        rec['organ']['code'] = l[2]
-        rec['donor'] = {}
-        rec['donor']['uuid'] = l[3]
-        rec['donor']['sex'] = l[4]
-        rec['relative_spatial_entry_iri'] = l[5]
-        rec['sample'] = {}
-        rec['sample']['uuid'] = l[6]
-        rec['sample']['hubmap_id'] = l[7]
-        rec['sample']['specimen_type'] = l[8]
-        rec['sample']['rui_location'] = json.loads(l[9])
-        rec['sample']['geom'] = l[10]
-        return rec
-
-    def sample_geome_of_id_as_text(self, id: str) -> str:
-        sql: str = \
-            f"""SELECT ST_AsText(sample_geom) as sample_geom_text
-             FROM {manager.table}
-             WHERE id = %(id)s;
-            """
-        recs: List[str] = self.postgresql_manager.select(sql, {'id': id})
-        return recs[0]
-
-    def geometry_as_text(self, geometry: str) -> str:
-        sql: str = \
-            f"""SELECT ST_AsText('{geometry}') as sample_geom_text;
-            """
-        recs: List[str] = self.postgresql_manager.select(sql)
-        return recs[0]
-
-    def text_as_geometry(self, text: str) -> str:
-        sql: str = \
-            f"""SELECT ST_GeomFromText({text}) as sample_geom_text;
-            """
-        recs: List[str] = self.postgresql_manager.select(sql)
-        return recs[0]
-
-    def geom_check(self, id: int = None) -> None:
-        logger.info(f'Determine if geometries are: closed, solids, and have the correct volume...')
-        # NOTE: ST_IsValid(sample_geom) does not support POLYHEDRALSURFACE.
-        sql: str = 'SELECT' \
-                   ' sample_hubmap_id, sample_rui_location, ST_IsClosed(sample_geom),' \
-                   ' ST_Volume(sample_geom), ST_3DArea(sample_geom), ST_IsSolid(sample_geom)' \
-                   f' FROM {self.table}'
-        if id is not None:
-            sql += f' WHERE id = %(id)s'
-            logger.info(f'Checking geometry with id = {id}.')
-        else:
-            logger.info('Checking all geometries.')
-        sql += ';'
-        results: list = self.postgresql_manager.select_all(sql, {'id': id})
-        logger.info(f'Checking {len(results)} geometries!')
-        for result in results:
-            sample_hubmap_id: str = result[0]
-            sample_rui_location: dict = json.loads(result[1])
-            placement: dict = sample_rui_location['placement']
-            sample_rui_location_volume: float = \
-                sample_rui_location["x_dimension"] * placement['x_scaling'] \
-                * sample_rui_location["y_dimension"] * placement['y_scaling'] \
-                * sample_rui_location["z_dimension"] * placement['z_scaling']
-            sample_rui_location_volume = round(sample_rui_location_volume, 0)
-            is_closed: str = result[2]
-            # ST_Volume — Computes the volume of a 3D solid. If applied to surface (even closed) geometries will return 0.
-            st_volume: float = round(float(result[3]), 0)
-            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
-            st_3darea: float = result[4]
-            if is_closed is not True:
-                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; IS NOT CLOSED!')
-            if sample_rui_location_volume != st_volume:
-                logger.error(
-                    f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
-            # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
-            # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
-            if st_3darea != 0:
-                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; ST_3DArea should return 0 for solids!')
-
-    # There is an error generated when trying go shrink after enlarging
-    # Solid is invalid : PolyhedralSurface (shell) 0 is invalid: Polygon 0 is invalid: points don't lie in the same plane
-    # This is likely due to rounding error in the scaling.
-    # Because translation is additive, this would likely work for that.
-    # NOTE: The inverse of scaling_factor == 10.0 is 0.1 and not -10.0
-    def modify_and_check_sample_id(self, id: int, scaling_factor: int = 10.0):
-        sql_id: str = f"""SELECT * from {manager.table} WHERE id = %(id)s;"""
-        recs: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
-        rec: dict = manager.list_to_rec_for_debugging(recs[0])
-        donor_sex: str = rec['donor']['sex']
-        if rec['donor']['sex'] == 'male':
-            rec['donor']['sex'] = 'female'
-        else:
-            rec['donor']['sex'] = 'male'
-        # Scale the sample by 10x so that we can see the difference with QGIS...
-        placement: dict = rec['sample']['rui_location']['placement']
-        placement['x_scaling'] *= scaling_factor
-        placement['y_scaling'] *= scaling_factor
-        placement['z_scaling'] *= scaling_factor
-        manager.upsert_rec(rec['relative_spatial_entry_iri'], rec)
-        recs2: List[str] = manager.postgresql_manager.select_all(sql_id, {'id': id})
-        rec2: dict = manager.list_to_rec_for_debugging(recs2[0])
-        if rec['sample']['geom'] == rec2['sample']['geom']:
-            logger.error(f"The geometry should have changed????")
-        if donor_sex == rec2['donor']['sex']:
-            logger.error(f"The donor sex should have changed????")
-        manager.geom_check(rec['id'])
-
-
+    # Used by: "POST /spatial-search/hubmap_id"
     def find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id(self,
                                                                         relative_spatial_entry_iri: str,
                                                                         radius: float,
@@ -415,7 +258,7 @@ class SpatialManager(object):
             'radius': radius
         })
 
-
+    # Used by "GET /search/hubmap_id/<id>/radius/<r>/target/<t>"
     def find_within_radius_at_sample_hubmap_id_and_target(self,
                                                           radius: float,
                                                           hubmap_id: str,
@@ -423,14 +266,19 @@ class SpatialManager(object):
                                                           ) -> List[str]:
         sample_rui_location: dict = \
             self.hubmap_id_sample_rui_location(hubmap_id, relative_spatial_entry_iri)
-        return self.find_within_radius_at_origin(radius,
-                                                 sample_rui_location['x_dimension'],
-                                                 sample_rui_location['y_dimension'],
-                                                 sample_rui_location['z_dimension'])
+        sql: str =\
+            f"""SELECT sample_hubmap_id FROM {self.table}
+            WHERE ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
+            """
+        return self.postgresql_manager.select(sql, {
+            'radius': radius,
+            'x': sample_rui_location['x_dimension'],
+            'y': sample_rui_location['y_dimension'],
+            'z': sample_rui_location['z_dimension']
+        })
 
 
 # NOTE: When running in a local docker container the tables are created automatically.
-# TODO: Nothing is being done with units.
 if __name__ == '__main__':
     import argparse
 
@@ -449,14 +297,6 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--polyhedralsurface', type=str,
                         help='output a closed POLYHEDRALSURFACE from the three x y z dimensions given and exit')
     # $ (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/spatial_manager.py -p '10 10 10')
-    parser.add_argument("-m", "--sample_modify", action="store_true",
-                        help='modify a sample that is currently in the database and exit')
-    parser.add_argument("-S", "--scaling_factor", type=float, default=10.0,
-                        help='modify a sample that is currently in the database by applying this scaling factor to it and exit')
-    parser.add_argument('-i', '--sample_id', type=int,
-                        help='choose this sample id for the test')
-    parser.add_argument('-u', '--update_sample_uuid', type=str,
-                        help='update the given sample_uuid data in the PostgreSQL database from a Neo4J query')
 
     args = parser.parse_args()
 
@@ -465,21 +305,7 @@ if __name__ == '__main__':
     manager = SpatialManager(config)
 
     try:
-        if args.sample_modify is True:
-            if args.sample_id is not None:
-                id: int = args.sample_id
-            else:
-                sql_count: str = f"""SELECT count(*) from {manager.table};"""
-                recs: List[str] = manager.postgresql_manager.select(sql_count)
-                id = random.randint(0, recs[0]-1)+1
-            manager.modify_and_check_sample_id(id, args.scaling_factor)
-            #import pdb;pdb.set_trace();
-
-        # Same as the MSAPI call found in server/spatialapi/sample_update_uuid
-        elif args.update_sample_uuid is not None:
-            manager.upsert_sample_uuid_data(args.update_sample_uuid)
-
-        elif args.polyhedralsurface is not None:
+        if args.polyhedralsurface is not None:
             try:
                 xyz_list: List[float] = [float(x) for x in args.polyhedralsurface.split()]
             except ValueError:
@@ -494,14 +320,6 @@ if __name__ == '__main__':
             logger.info(f'Dimensions given are x: {x}, y: {y}, z: {z}')
             print(manager.create_geom_with_dimension(x, y, z))
 
-        else:
-            # Rather than using RK use the UBERON number. If there is no UBERON number it doesn't exist yet.
-            # RK:
-            # description: Kidney (Right)
-            # iri: http://purl.obolibrary.org/obo/UBERON_0004539
-            # https://raw.githubusercontent.com/hubmapconsortium/search-api/master/src/search-schema/data/definitions/enums/organ_types.yaml
-            manager.insert_organ_data('RK')
-            manager.insert_organ_data('LK')
     finally:
         manager.close()
         logger.info('Done!')

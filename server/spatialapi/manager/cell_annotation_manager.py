@@ -1,5 +1,4 @@
 import logging
-from spatialapi.manager.postgresql_manager import PostgresqlManager
 import configparser
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +6,8 @@ import re
 from urllib import parse
 import psycopg2
 from typing import List
+
+from spatialapi.manager.postgresql_manager import PostgresqlManager
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,13 @@ class CellAnnotationManager(object):
 
     # https://neo4j.com/docs/api/python-driver/current/api.html
     def close(self) -> None:
-        logger.info(f'CellAnnotationManager: Closing connection to PostgreSQL')
+        logger.info(f'CellAnnotationManager: Closing')
         self.postgresql_manager.close()
 
     def find_rows_in_azimuth_uri_table(self, summary_re: re, first_label_entry: str):
         html_text: str = requests.get(self.azimuth_uri).text
         bs_object = BeautifulSoup(html_text, 'html.parser')
-        details =  bs_object \
+        details = bs_object \
             .find("body") \
             .find("main", attrs={"id": "content"}) \
             .find("div", attrs={"class": "container"}) \
@@ -56,13 +57,12 @@ class CellAnnotationManager(object):
             markers: List[str] = row.select('td:nth-of-type(3)')[0].string.strip().split(',')
             markers_stripped: List[str] = [s.strip() for s in markers]
             try:
-                id: int = manager.postgresql_manager.create_annotation_details(
+                id: int = self.postgresql_manager.create_annotation_details(
                     cell_type_name, obo_ontology_id_uri, markers_stripped
                 )
                 logger.info(f"cell_annotation_details: {id}")
             except psycopg2.errors.UniqueViolation as e:
                 logger.info(f"create_annotation_details {e}")
-
 
     def load_annotation_details(self):
         self.load_annotation_details_from_azimuth_uri_table(r'^.*annotation\.l3.*$', 'Afferent / Efferent Arteriole Endothelial')
@@ -106,8 +106,6 @@ if __name__ == '__main__':
         formatter_class=RawTextArgumentDefaultsHelpFormatter)
     parser.add_argument("-C", '--config', type=str, default='resources/app.local.properties',
                         help='config file to use')
-    parser.add_argument("-l", '--load', action="store_true",
-                        help='load cell_annotation_details from scraping Azimuth data from web page')
     parser.add_argument("-c", '--check', action="store_true",
                         help='check cell_annotation_details and related tables by scraping Azimuth data from web page')
     # (cd server; export PYTHONPATH=.; python3 ./spatialapi/manager/cell_annotation_manager.py -d 'Connecting Tubule')
@@ -136,9 +134,7 @@ if __name__ == '__main__':
         # )
         # logger.info(f"cell_annotation_details: {id}")
 
-        if args.load:
-            manager.load_annotation_details()
-        elif args.check:
+        if args.check:
             manager.check_annotation_details()
         elif args.detail_cell_type_name is not None:
             print(f'detail_cell_type_name: {args.detail_cell_type_name}')
@@ -148,8 +144,6 @@ if __name__ == '__main__':
         elif args.get_cell_marker_id is not None:
             id: int = manager.postgresql_manager.get_cell_marker_id(args.get_cell_marker_id)
             logger.info(f"cell_marker.marker:{args.get_cell_marker_id} id: {id}")
-
-    # cell_type, html tables, data set type
 
     finally:
         manager.close()

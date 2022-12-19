@@ -9,14 +9,19 @@ services:
       dockerfile: Dockerfile.local
     restart: always
     environment:
-      - HOST_GID=${HOST_GID:-1000}
-      - HOST_UID=${HOST_UID:-1000}
+      - HOST_GID=${HOST_GID:-1001}
+      - HOST_UID=${HOST_UID:-1001}
       - FLASK_APP=spatialapi
       - FLASK_ENV=development
     networks:
       - shared-web
     volumes:
       - ./server:/app/server
+      - ./server/resources/app.properties:/app/server/resources/app.properties
+      - ./server/resources/cell_type_name_mapping.json:/app/server/resources/cell_type_name_mapping.json
+      - ./server/log:/app/server/log
+      - ./VERSION:/app/server/VERSION
+      - ./BUILD:/app/server/BUILD
     deploy:
       resources:
         limits:

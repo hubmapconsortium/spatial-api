@@ -1,6 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
+-- To reload the database on dev...
+-- $ psql -h 18.205.215.12 -p 5432 -d spatial -U spatial -f db/initdb.d/initdb.sql
+
 SELECT postgis_version();
 
 DROP TABLE IF EXISTS sample;
@@ -29,7 +32,9 @@ CREATE INDEX IF NOT EXISTS "geom_sample_index" ON sample USING GIST(sample_geom)
 -- HTML annotation.l3 table under the Kidney reference for azimuth.
 -- https://azimuth.hubmapconsortium.org/references/#Human%20-%20Kidney
 
-DROP TABLE IF EXISTS cell_annotation_details;
+DROP TABLE IF EXISTS cell_annotation_details, cell_annotation_details_marker, cell_marker, cell_types;
+
+-- DROP TABLE IF EXISTS cell_annotation_details;
 CREATE TABLE IF NOT EXISTS cell_annotation_details (
     "id" SERIAL PRIMARY KEY,
     -- 'cell_type_name' is the column 'Label' from the Annotation Details annotation.l3
@@ -39,13 +44,11 @@ CREATE TABLE IF NOT EXISTS cell_annotation_details (
     "ontology_id" text NOT NULL
 );
 
-DROP TABLE IF EXISTS cell_marker;
 CREATE TABLE IF NOT EXISTS cell_marker (
     "id" SERIAL PRIMARY KEY,
     "marker" text NOT NULL UNIQUE
 );
 
-DROP TABLE IF EXISTS cell_annotation_details_marker;
 CREATE TABLE IF NOT EXISTS cell_annotation_details_marker (
     cell_annotation_details_id INT REFERENCES cell_annotation_details (id),
     cell_marker_id INT REFERENCES cell_marker (id) ON DELETE CASCADE,
@@ -53,12 +56,12 @@ CREATE TABLE IF NOT EXISTS cell_annotation_details_marker (
 );
 
 -- This table holds a row per cell type per sample.
+-- Deletions from the sample table will delete corresponding rows in this table.
 -- The cell information can be found in the secondary_analysis.h5ad files in the associated datasets (at the PSC)
-DROP TABLE IF EXISTS cell_types;
 CREATE TABLE IF NOT EXISTS cell_types (
     "id" SERIAL PRIMARY KEY,
     "sample_uuid" text NOT NULL,
-    "cell_annotation_details_id" SERIAL REFERENCES cell_annotation_details (id) ON DELETE CASCADE,
+    "cell_annotation_details_id" SERIAL REFERENCES cell_annotation_details (id),
     "cell_type_count" BIGINT NOT NULL,
     CONSTRAINT cell_types_sample_uuid_cell_annotation_details_id_key UNIQUE (sample_uuid, cell_annotation_details_id)
 );
