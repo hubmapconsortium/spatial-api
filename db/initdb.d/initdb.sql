@@ -1,12 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
--- To reload the database on dev...
+-- To reload the database tables on dev...
 -- $ psql -h 18.205.215.12 -p 5432 -d spatial -U spatial -f db/initdb.d/initdb.sql
 
 SELECT postgis_version();
 
-DROP TABLE IF EXISTS sample;
+DROP TABLE IF EXISTS sample, dataset, sample_dataset;
+
 CREATE TABLE IF NOT EXISTS sample (
     "id" SERIAL PRIMARY KEY,
     "organ_uuid" text NOT NULL,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS sample (
     "sample_hubmap_id" text NOT NULL,
     "sample_specimen_type" text NOT NULL,
     "sample_rui_location" text NOT NULL,
+    "sample_last_modified_timestamp" BIGINT NOT NULL,
     CONSTRAINT sample_relative_spatial_entry_sample_uuid_key UNIQUE (relative_spatial_entry_iri, sample_uuid)
 );
 -- https://gis.stackexchange.com/questions/36924/adding-geometry-column-in-postgis
@@ -25,6 +27,18 @@ CREATE TABLE IF NOT EXISTS sample (
 ALTER TABLE sample ADD COLUMN IF NOT EXISTS sample_geom geometry(POLYHEDRALSURFACEZ,0);
 ALTER TABLE sample ALTER COLUMN sample_geom SET NOT NULL;
 CREATE INDEX IF NOT EXISTS "geom_sample_index" ON sample USING GIST(sample_geom);
+
+CREATE TABLE IF NOT EXISTS dataset (
+    "id" SERIAL PRIMARY KEY,
+    "uuid" text NOT NULL UNIQUE,
+    "last_modified_timestamp" BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sample_dataset (
+    sample_uuid TEXT NOT NULL,
+    dataset_uuid TEXT REFERENCES dataset (uuid) ON DELETE CASCADE,
+    CONSTRAINT sample_dataset_pkey PRIMARY KEY (sample_uuid, dataset_uuid)
+);
 
 -- Identify tissue samples that are registered in the spatial database by the types of cells contained within.
 

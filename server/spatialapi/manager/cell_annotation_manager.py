@@ -81,7 +81,7 @@ class CellAnnotationManager(object):
                 logger.error(f"The cell_type_names do not match web: {cell_type_name}, db: {data[0]}")
             if data[1] != obo_ontology_id_uri:
                 logger.error(f"The obo_ontology_id_uris do not match web: {obo_ontology_id_uri}, db: {data[1]}")
-            if  sorted(markers_stripped) != sorted(data[2]):
+            if sorted(markers_stripped) != sorted(data[2]):
                 logger.error(f"The markers do not match web: {markers_stripped}, db: {data[2]}")
         logger.info(f'Done! check_annotation_details {len(rows)} processed')
 

@@ -86,12 +86,13 @@ class Geom(object):
             if is_closed is not True:
                 logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; IS NOT CLOSED!')
             if sample_rui_location_volume != st_volume:
-                logger.error(
-                    f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id};'
+                             f' sample_rui_location_volume:{sample_rui_location_volume} != st_volume:{st_volume}')
             # https://access.crunchydata.com/documentation/postgis/3.2.1/ST_3DArea.html
             # ST_3DArea — Computes area of 3D surface geometries. Will return 0 for solids.
             if st_3darea != 0:
-                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id}; ST_3DArea should return 0 for solids!')
+                logger.error(f'The sample_geom for sample_hubmap_id: {sample_hubmap_id};'
+                             ' ST_3DArea should return 0 for solids!')
 
     # Since the object is created with its centroid at <0, 0, 0> the only location data that matters is the translation.
     def centroid_from_sample_rui_location(self,

@@ -1,4 +1,5 @@
 import logging
+from http import HTTPStatus
 from typing import List
 from flask import abort
 import json
@@ -21,7 +22,7 @@ def _donor_sex_to_target_iri(donor_sex: str) -> str:
         target_iri = 'VHFemale'
     else:
         # TODO: Throw error
-        Pass
+        pass
     return target_iri
 
 
@@ -154,14 +155,17 @@ class SpatialManager(object):
         sample_uuid: str = rec['sample']['uuid']
         sample_hubmap_id: str = rec['sample']['hubmap_id']
         sample_specimen_type: str = rec['sample']['specimen_type']
+        sample_last_modified_timestamp: int = rec['sample']['last_modified_timestamp']
         sample_rui_location: str = json.dumps(rec['sample']['rui_location'])
         sample_geom: str = self.create_geometry(rec['sample']['rui_location'])
         return f"INSERT INTO {self.table}" \
                " (organ_uuid, organ_code, donor_uuid, donor_sex, relative_spatial_entry_iri, sample_uuid," \
-               " sample_hubmap_id, sample_specimen_type, sample_rui_location, sample_geom)" \
+               " sample_hubmap_id, sample_specimen_type, sample_rui_location," \
+               " sample_last_modified_timestamp, sample_geom)" \
                " VALUES (" \
                f"'{organ_uuid}', '{organ_code}', '{donor_uuid}', '{donor_sex}', '{target_iri}', '{sample_uuid}'," \
-               f" '{sample_hubmap_id}', '{sample_specimen_type}', '{sample_rui_location}', {sample_geom}" \
+               f" '{sample_hubmap_id}', '{sample_specimen_type}', '{sample_rui_location}'," \
+               f" {sample_last_modified_timestamp}, {sample_geom}" \
                ")" \
                " ON CONFLICT ON CONSTRAINT sample_relative_spatial_entry_sample_uuid_key DO UPDATE SET" \
                f" organ_uuid = '{organ_uuid}', organ_code = '{organ_code}', donor_uuid = '{donor_uuid}'," \
@@ -213,12 +217,13 @@ class SpatialManager(object):
             'sample_hubmap_id': sample_hubmap_id,
             'relative_spatial_entry_iri': relative_spatial_entry_iri
         })
-        #logger.debug(f"hubmap_id_sample_rui_location; sql: {sql} recs: {recs}")
         if len(recs) == 0:
-            abort(json_error(f'The attributes hubmap_id: {sample_hubmap_id}, with relative_spatial_entri_iri: {relative_spatial_entry_iri} has no sample_rui_location geom data', HTTPStatus.NOT_FOUND))
+            abort(json_error(f'The attributes hubmap_id: {sample_hubmap_id}, with'
+                             f' relative_spatial_entri_iri: {relative_spatial_entry_iri}'
+                             ' has no sample_rui_location geom data',
+                             HTTPStatus.NOT_FOUND))
         if len(recs) != 1:
             logger.error(f'Query against a single sample_hubmap_id={sample_hubmap_id} returned multiple rows')
-        #logger.debug(f'hubmap_id_sample_rui_location(hubmap_id: {sample_hubmap_id}, relative_spatial_entri_iri: {relative_spatial_entry_iri}) => sample_rui_location: {recs[0]}')
         return json.loads(recs[0])
 
     # Used by: "POST /spatial-search/hubmap_id"

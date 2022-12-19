@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# To recreate the containers, load the data, and run the tests...
-# $ ./scripts/run_local.sh -dlt
+# To recreate the containers, and load the data...
+# $ ./scripts/run_local.sh -s -d TOKEN
 
 # $ docker exec -ti spatial-api /bin/sh
 
@@ -99,9 +99,9 @@ fi
 
 if [ $DB ]; then
   echo
-  echo ">>> Rebuilding database (through server) after destroying its container..."
+  echo ">>> Rebuilding database (through server) after destroying its container and reloading the schema..."
   echo
-  ./scripts/db_rebuild.sh -t $BEARER_TOKEN
+  ./scripts/db_rebuild.sh -H http://localhost:5001 -D localhost:5432 -t $BEARER_TOKEN -r
 fi
 
 if [ $TESTS ]; then
