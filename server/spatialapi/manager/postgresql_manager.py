@@ -22,12 +22,11 @@ class PostgresqlManager(object):
         logger.info(f"PostgresqlManager: Username: {postgresql_config.get('Username')} Server: {postgresql_config.get('Server')}")
         self.conn = psycopg2.connect(**connection)
 
-        self.missing_cell_type_names: List[str] = []
-
     def close(self) -> None:
-        logger.info(f'PostgresqlManager: Closing connection to PostgreSQL')
         if self.conn is not None:
+            logger.info(f'PostgresqlManager: Closing connection to PostgreSQL')
             self.conn.close()
+            self.conn = None
 
     def new_cursor(self):
         return self.conn.cursor()

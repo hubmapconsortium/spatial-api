@@ -1,5 +1,4 @@
 import logging
-from typing import List
 from psycopg2 import DatabaseError
 from psycopg2.errors import UniqueViolation, NotNullViolation
 
