@@ -204,7 +204,7 @@ The urls are as follows:
 [DEV](https://spatial-api.dev.hubmapconsortium.org/),
 [TEST](https://spatial-api.test.hubmapconsortium.org/),
 [STAGE](https://spatial-api.stage.hubmapconsortium.org/),
-[PROD](https://spatial-api.hubmapconsortium.org/).
+[PROD](https://spatial.api.hubmapconsortium.org/).
 
 ## Method Verification Data
 
