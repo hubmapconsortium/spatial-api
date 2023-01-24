@@ -194,7 +194,12 @@ The specification .yml file should be found at the top lever of the project, and
 ### SmartAPI
 
 All of the HubMAP APIs are found [here](https://smart-api.info/registry?q=hubmap).
-They are reloaded from the `master` branch specification .yml file sometime after midnight Eastern Time US.
+
+The Spatial API is found [here](https://smart-api.info/ui/f81c4c1977642e0a9c8adbf0486cad40),
+and is reloaded from the file `spatial-api-spec.yaml` in the `main` branch sometime after midnight Eastern Time US.
+It contains only the search related endpoints.
+
+The other administrative endpoints are found in `spatial-api-spec-private.yaml`.
 
 ### Registering Endpoints
 All endpoints should be registered in the `AWS API Gateway`.
