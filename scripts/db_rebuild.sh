@@ -2,9 +2,20 @@
 set -e
 set -u
 
-SCHEME_HOST_PORT=https://spatial-api.dev.hubmapconsortium.org
-# SCHEME_HOST_PORT=http://localhost:5001
-DATABASE_HOST_PORT=18.205.215.12:5432
+SCHEME_HOST_PORT_PROD=https://spatial.api.hubmapconsortium.org
+SCHEME_HOST_PORT_DEV=https://spatial-api.dev.hubmapconsortium.org
+SCHEME_HOST_PORT_LOCAL=http://localhost:5001
+SCHEME_HOST_PORT=$SCHEME_HOST_PORT_PROD
+
+DATABASE_HOST_PORT_DEV=18.205.215.12:5432
+DATABASE_HOST_PORT_PROD=34.234.131.112:5432
+DATABASE_HOST_PORT=$DATABASE_HOST_PORT_PROD
+
+DATABASE_NAME_DEV=spatial
+DATABASE_NAME_PROD=spatial_prod_db
+DATABASE_NAME=$DATABASE_NAME_PROD
+
+DATABASE_USER=
 BEARER_TOKEN=
 INCREMENTAL_REINDEX=0
 RECREATE_DATABASE_TABLES=0
@@ -12,9 +23,10 @@ VERBOSE=
 
 usage()
 {
-  echo "Usage: $0 [-H SCHEME_HOST_PORT] [-D DATABASE_HOST_PORT] [-t BEARER_TOKEN] [-i] [-r] [-v] [-h]"
+  echo "Usage: $0 [-H SCHEME_HOST_PORT] [-D DATABASE_HOST_PORT] [-U DATABASE_USER] [-t BEARER_TOKEN] [-i] [-r] [-v] [-h]"
   echo " -H Scheme, host, and port of spatial-api server (${SCHEME_HOST_PORT})"
   echo " -D HOST:PORT Database Host and Port separated by a colon ':' (${DATABASE_HOST_PORT})"
+  echo " -U DATABASE_USER Look in the resources/app.properties file for the [postgresql] Username"
   echo " -t BEARER_TOKEN (see text below)"
   echo " -i Incremental Reindex samples that are older than last processed"
   echo " -r Delete and then recreate Databases Tables from 'db/initdb.d/initdb.sql'"
@@ -28,10 +40,11 @@ usage()
   exit 2
 }
 
-while getopts 'H:D:t:irvh' arg; do
+while getopts 'H:D:U:t:irvh' arg; do
   case $arg in
     H) SCHEME_HOST_PORT=$OPTARG ;;
     D) DATABASE_HOST_PORT=$OPTARG ;;
+    U) DATABASE_USER=$OPTARG ;;
     t) BEARER_TOKEN=$OPTARG ;;
     i) INCREMENTAL_REINDEX=1 ;;
     r) RECREATE_DATABASE_TABLES=1 ;;
@@ -44,7 +57,7 @@ shift $((OPTIND-1))
 
 echo
 echo "spatial-api: Scheme, host, and port: ${SCHEME_HOST_PORT}"
-echo "db: host, port: ${DATABASE_HOST_PORT}"
+echo "db: host, port: ${DATABASE_HOST_PORT}, user: ${DATABASE_USER}"
 echo "Bearer Token: ${BEARER_TOKEN}"
 echo "Incremental Reindex: ${INCREMENTAL_REINDEX}"
 echo "Recreate database tables: ${RECREATE_DATABASE_TABLES}"
@@ -87,7 +100,7 @@ if [[ $RECREATE_DATABASE_TABLES -eq 1 ]]; then
   echo
   echo ">>> Reloading database tables; dbhost: ${db_host}; db_port: ${db_port}"
   echo "Look in the resources/app.properties file for the [postgresql] Passowrd."
-  psql -h ${db_host} -p ${db_port} -d spatial -U spatial -f db/initdb.d/initdb.sql
+  psql -h ${db_host} -p ${db_port} -d $DATABASE_NAME -U $DATABASE_USER -f db/initdb.d/initdb.sql
 fi
 
 echo

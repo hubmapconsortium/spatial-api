@@ -70,20 +70,40 @@ threading.Thread(target=log_check_timeouts_thread,
 # This thread will run forever, so we don't need a handle on it to .join()
 
 
-# Austin Hartman Novemer 8, 2022 10:41 AM
+# Austin Hartman November 8, 2022 10:41 AM
 # The ‘annotation details’ marker tables can be found within the azimuth website repo here:
 # https://github.com/satijalab/azimuth_website/tree/master/static/csv. However, the annotations
 # listed may not (actually usually don’t) line up with ASCT+B cell types as you point out.
 # So for the kidney, the azimuth website lists the original annotations at 3 levels of resolution
 # and the secondary_analysis.h5ad files contain ASCT+B annotations which are mapped from the level 3
 # annotations using this table:
-# https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json
+# https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/*
+# MOVED IN MARCH 2023: https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/kidney.json
 # where keys represent the level 3 annotations (kidney_l3.csv) and values are ASCT+B names
+
+# TODO: use https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/all_labels.csv
+# Austin Hartman March 13, 2023 1:15 PM
+# hubmap wanted to rework the annotation details so they’re now here:
+# https://github.com/hubmapconsortium/azimuth-annotate/blob/main/data/*
+# Charles Kollar March 13, 2023 2:08 PM
+# Yes, I was looking at the "mapping" from the old file, and the "L_A" and "Label" columns from the new file, and some of the entries are very different.
+# So, there is more going on here than simply changing format. Is this as you understand it?
+# Austin Hartman 2:12 PM
+# Yeah, there could be major changes to some of the celltype mappings as there is a new ‘version’ of these mappings I believe.
+# You could use the old file, but the new file should contain more accurate mappings for cell types
+# Charles Kollar 2:13 PM
+# To get things moving I'm going to use the old file, and make a card to change this to read the .csv file of the mappings.
+# I am right about the mapping columns above "L_A" and "Label"? These are the columns that should corespond to the mappings of the old file?!
+# Austin Hartman 2:16 PM
+# Yeah exactly. A_L stands for azimuth label, the keys in the old file, and Label contains the ASCT+B label which are the values in the old file
+
 def load_cell_type_mapping() -> dict:
     from urllib.request import urlopen
     import json
     from bs4 import BeautifulSoup
-    url_str: str = "https://raw.githubusercontent.com/hubmapconsortium/azimuth-annotate/main/data/kidney.json"
+    # TODO: The original file was deprecated and moved. For now we are using the old file in it's new lcation and make a card to change this over
+    #url_str: str = "https://raw.githubusercontent.com/hubmapconsortium/azimuth-annotate/main/data/kidney.json"
+    url_str: str = "https://raw.githubusercontent.com/hubmapconsortium/azimuth-annotate/2e4017d727373f43c2e617100a9b88b7985dd475/data/kidney.json"
     mapping: dict = {}
     url = urlopen(url_str)
     content = url.read()

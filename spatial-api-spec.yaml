@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   description: 'The HuBMAP Spatial API is a standard RESTful web service with create operations.'
-  version: 1.0.0
+  version: 1.2.1
   title: HuBMAP Spatial API
   contact:
     name: HuBMAP Help Desk
@@ -13,53 +13,6 @@ servers:
   - url: 'https://spatial.api.hubmapconsortium.org'
 
 paths:
-  '/rebuild-annotation-details':
-    put:
-      summary: Rebuild the tables containing the annotation details
-      operationId: rebuild_annotation_details
-      responses:
-        '200':
-          description: Processed
-  '/samples/cell-type-counts':
-    put:
-      summary: The sample cell type counts are returned by ingest-api
-      operationId: samples_cell_type_counts
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ExtractedCellTypeCountsRequest'
-      responses:
-        '202':
-          description: Accepted for Processing
-  '/samples/reindex-all':
-    put:
-      summary: For all samples, delete the old sample information and replace it by processing the current data
-      operationId: samples_reindex_all
-      responses:
-        '202':
-          description: Accepted for Processing
-  '/samples/incremental-reindex':
-    put:
-      summary: For those samples that are newer in Neo4J, delete the old sample information and replace it by processing the current data
-      operationId: samples_incremental_reindex
-      responses:
-        '202':
-          description: Accepted for Processing
-  '/samples/{sample_uuid}/reindex':
-    put:
-      summary: For the sample_uuid given, delete the old sample information and replace it by processing the current data
-      operationId: samples_reindex
-      responses:
-        '202':
-          description: Accepted for Processing
-  '/samples/organs/{organ_code}/reindex':
-    put:
-      summary: For all samples associated with the organ_code, delete the old sample information and replace it by processing the current data
-      operationId: samples_organs_reindex
-      responses:
-        '202':
-          description: Accepted for Processing
   '/search/hubmap-id/{hubmap_id}/radius/{radius}/target/{target}':
     get:
       summary: List the hubmap_ids associated with the target body that are located within the radius of the centroid of the hubmap_id specified
@@ -192,14 +145,6 @@ components:
         z:
           type: number
           example: 20
-    ExtractedCellTypeCountsRequest:
-      type: object
-      properties:
-        sample_uuid:
-          type: string
-          example: 1.0.0
-        cell_type_counts:
-          type: object
     StatusResponse:
       type: object
       properties:
