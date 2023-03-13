@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   description: 'The HuBMAP Spatial API is a standard RESTful web service with create operations.'
-  version: 1.2.0
+  version: 1.2.1
   title: HuBMAP Spatial API
   contact:
     name: HuBMAP Help Desk
