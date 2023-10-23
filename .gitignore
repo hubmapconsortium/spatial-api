@@ -12,3 +12,9 @@ server/VERSION
 
 # Ignore docker env file
 .env
+
+# log files in any path
+**/*.log
+
+# Rotated log files
+**/*.log*
