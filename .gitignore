@@ -9,3 +9,6 @@ scripts/psc/*.json
 BUILD
 server/BUILD
 server/VERSION
+
+# Ignore docker env file
+.env
