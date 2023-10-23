@@ -1,6 +1,6 @@
 FROM python:3.9.5-alpine
 
-RUN apk add --no-cache --update build-base gcc libc-dev libffi-dev linux-headers pcre-dev postgresql-dev postgresql-libs su-exec
+RUN apk add --no-cache --update build-base gcc libc-dev libffi-dev linux-headers pcre-dev postgresql-dev postgresql-libs su-exec curl
 
 ENV VIRTUAL_ENV=/app
 RUN python3 -m venv $VIRTUAL_ENV
