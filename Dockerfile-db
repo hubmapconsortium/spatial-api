@@ -1,8 +1,8 @@
 # https://stackoverflow.com/questions/66205577/how-do-i-add-postgis-to-my-postgresql-setup-using-pure-docker-compose
-FROM postgres:13.4
+FROM postgres:15.1
 
 EXPOSE 5432
 
-RUN apt-get update && apt-get install -y postgresql-13-postgis-3  
+RUN apt-get update && apt-get install -y postgresql-15-postgis-3
 
 CMD ["/usr/local/bin/docker-entrypoint.sh","postgres"]

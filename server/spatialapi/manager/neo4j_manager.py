@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 cypher_common_match: str = \
-    "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {specimen_type:'organ'})-[*]->(s:Sample)"
+    "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {sample_category:'organ'})-[*]->(s:Sample)"
 
 cypher_common_where: str = \
     " WHERE exists(s.rui_location) AND trim(s.rui_location) <> ''"
@@ -16,7 +16,7 @@ cypher_common_where: str = \
 # If changing this, also change "process_record()" which repackages this information into a dict...
 cypher_common_return: str = \
     " RETURN DISTINCT s.uuid as sample_uuid, s.hubmap_id AS sample_hubmap_id," \
-    " s.rui_location as sample_rui_location, s.specimen_type as sample_specimen_type," \
+    " s.rui_location as sample_rui_location, s.sample_category as sample_sample_category," \
     " s.last_modified_timestamp as sample_last_modified_timestamp," \
     " dn.uuid as donor_uuid, dn.metadata as donor_metadata," \
     " o.uuid as organ_uuid, o.organ as organ_code"
@@ -81,7 +81,7 @@ class Neo4jManager(object):
             sample: dict = {
                 'uuid': record.get('sample_uuid'),
                 'hubmap_id': record.get('sample_hubmap_id'),
-                'specimen_type': record.get('sample_specimen_type'),
+                'sample_category': record.get('sample_sample_category'),
                 'last_modified_timestamp': record.get('sample_last_modified_timestamp'),
                 'rui_location': rui_location_json
             }

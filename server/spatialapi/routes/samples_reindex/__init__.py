@@ -23,8 +23,8 @@ def get_authhelper_instance(config) -> AuthHelper:
     exists before we try to get it.
     """
     app_config = config['app']
-    client_id: str = app_config.get('ClientId')
-    client_secret: str = app_config.get('ClientSecret')
+    client_id: str = app_config.get('ClientId').strip("'")
+    client_secret: str = app_config.get('ClientSecret').strip("'")
     if AuthHelper.isInitialized() is False:
         return AuthHelper.create(client_id, client_secret)
     return AuthHelper.instance()

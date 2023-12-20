@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 -- To reload the database tables on dev...
 -- $ psql -h 18.205.215.12 -p 5432 -d spatial -U spatial -f db/initdb.d/initdb.sql
 
+SELECT version();
 SELECT postgis_version();
 
 DROP TABLE IF EXISTS sample, dataset, sample_dataset;
@@ -17,7 +18,7 @@ CREATE TABLE IF NOT EXISTS sample (
     "relative_spatial_entry_iri" text NOT NULL,
     "sample_uuid" text NOT NULL,
     "sample_hubmap_id" text NOT NULL,
-    "sample_specimen_type" text NOT NULL,
+    "sample_sample_category" text NOT NULL,
     "sample_rui_location" text NOT NULL,
     "sample_last_modified_timestamp" BIGINT NOT NULL,
     CONSTRAINT sample_relative_spatial_entry_sample_uuid_key UNIQUE (relative_spatial_entry_iri, sample_uuid)
@@ -160,7 +161,7 @@ $$;
 --    P_relative_spatial_entry_iri IN VARCHAR,
 --    P_sample_uuid IN VARCHAR,
 --    P_sample_hubmap_id IN VARCHAR,
---    P_sample_specimen_type IN VARCHAR,
+--    P_sample_sample_category IN VARCHAR,
 --    P_sample_rui_location IN VARCHAR,
 --    P_sample_geom IN geometry
 --    )
@@ -169,12 +170,12 @@ $$;
 --BEGIN
 --    INSERT INTO sample
 --     (organ_uuid, organ_code, donor_uuid, donor_sex, relative_spatial_entry_iri, sample_uuid,
---      sample_hubmap_id, sample_specimen_type, sample_rui_location, sample_geom)
+--      sample_hubmap_id, sample_sample_category, sample_rui_location, sample_geom)
 --     VALUES (P_organ_uuid, P_organ_code, P_donor_uuid, P_donor_sex, P_relative_spatial_entry_iri, P_sample_uuid,
---       P_sample_hubmap_id, P_sample_specimen_type, P_sample_rui_location, P_sample_geom)
+--       P_sample_hubmap_id, P_sample_sample_category, P_sample_rui_location, P_sample_geom)
 --     ON CONFLICT ON CONSTRAINT sample_relative_spatial_entry_sample_uuid_key DO UPDATE
 --        SET organ_uuid = P_organ_uuid, organ_code = P_organ_code, donor_uuid = P_donor_uuid, donor_sex = P_donor_sex,
---        sample_hubmap_id = P_sample_hubmap_id, sample_specimen_type = P_sample_specimen_type,
+--        sample_hubmap_id = P_sample_hubmap_id, sample_sample_category = P_sample_sample_category,
 --        sample_rui_location = P_sample_rui_location, sample_geom = P_sample_geom;
 --END
 --$$;
