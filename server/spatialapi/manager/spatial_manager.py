@@ -253,7 +253,8 @@ class SpatialManager(object):
             f""" {self.table}.relative_spatial_entry_iri = %(relative_spatial_entry_iri)s
                 AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
             """
-        logger.debug(f"find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id({relative_spatial_entry_iri}, {radius}, {hubmap_id}, {cell_type_name}): sql: {sql}")
+        logger.debug(f"find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id({relative_spatial_entry_iri}, "
+                     f"{radius}, {hubmap_id}, {cell_type_name}): sample_rui_location: {sample_rui_location}; sql: {sql}")
         return self.postgresql_manager.select(sql, {
             'cell_type_name': cell_type_name,
             'relative_spatial_entry_iri': relative_spatial_entry_iri,

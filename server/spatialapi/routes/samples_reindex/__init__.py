@@ -159,6 +159,7 @@ def samples_incremental_reindex():
             neo4j_manager.retrieve_datasets_that_have_rui_location_information_for_sample_uuid()
 
         recs_all: List[dict] = neo4j_manager.query_all()
+        logger.debug(f'samples_incremental_reindex: all_recs: {recs_all}')
 
         recs: list = []
         for rec in recs_all:

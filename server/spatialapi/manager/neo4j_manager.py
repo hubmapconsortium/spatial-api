@@ -6,6 +6,7 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
+# NOTE: Nothing in this file should modify the Neo4J database
 
 cypher_common_match: str = \
     "MATCH (dn:Donor)-[:ACTIVITY_INPUT]->(:Activity)-[:ACTIVITY_OUTPUT]->(o:Sample {sample_category:'organ'})-[*]->(s:Sample)"
@@ -137,15 +138,23 @@ class Neo4jManager(object):
         cypher: str = cypher_common_match + cypher_common_where
         if sample_uuid is not None:
             cypher += f" AND s.uuid = '{sample_uuid}'"
-        # Note: ds.data_types is actually a string pretending to be a list.
+        # Using the following to map the old data_types field to the new dataset_type field:
+        # MATCH (ds:Dataset) RETURN DISTINCT ds.data_types, ds.dataset_type
+        # "['salmon_rnaseq_snareseq']"	"SNARE-seq2 [Salmon]"
+        # "['salmon_sn_rnaseq_10x']"	"RNAseq [Salmon]"
+        # "['salmon_rnaseq_slideseq']"	"Slide-seq [Salmon]"
+        # where the old query contained...
+        # "(ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
+        # " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
+        # " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
         cypher += \
             " OPTIONAL MATCH (ds:Dataset)<-[*]-(s)" \
-            " WHERE (ds.data_types CONTAINS 'salmon_rnaseq_snareseq'" \
-            " OR ds.data_types CONTAINS 'salmon_sn_rnaseq_10x'" \
-            " OR ds.data_types CONTAINS 'salmon_rnaseq_slideseq')" \
+            " WHERE" \
+            " ds.dataset_type IN ['SNARE-seq2 [Salmon]', 'RNAseq [Salmon]', 'Slide-seq [Salmon]']" \
             " AND ds.status IN ['QA', 'Published']" \
             " RETURN DISTINCT" \
             " s.uuid AS sample_uuid, ds.uuid AS ds_uuid, ds.last_modified_timestamp as ds_last_modified_timestamp"
+        logger.debug(f"retrieve_datasets_that_have_rui_location_information_for_sample_uuid({sample_uuid}) : {cypher}")
         with self.driver.session() as session:
             results: neo4j.Result = session.run(cypher)
             for result in results:

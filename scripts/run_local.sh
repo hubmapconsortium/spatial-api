@@ -86,6 +86,8 @@ fi
 if [ $SERVER ]; then
   SERVER_LOG=server/log
   mkdir -p $SERVER_LOG
+  # Remove the previous log file before starting the service.
+  cp /dev/null $SERVER_LOG/uwsgi-spatial-api.log
 
   APP_LOCAL_PROPERTIES=server/resources/app.local.properties
   if [[ ! -f $APP_LOCAL_PROPERTIES ]]; then
@@ -107,6 +109,9 @@ if [ $DB ]; then
   # Needs to match information in server/resources/app.properties
   # You will be prompted for the password found at: server/resources/app.properties [postgresql] Password
   ./scripts/db_rebuild.sh -H http://localhost:5001 -D localhost:5432 -U spatial -d spatial -t $BEARER_TOKEN -r
+  # NOTE: The above calls ingest-api to "initiate" the "cell type count" process. Ingest-api spawns a thread
+  # to do this and returns the results via the PUT /samples/cell-type-counts to this (spatial-api) microservice.
+  # So, unless you are running a local ingest-api this step will not work and the table "cell_types" will not be built.
 fi
 
 if [ $TESTS ]; then
