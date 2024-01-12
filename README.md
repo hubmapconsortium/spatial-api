@@ -1,6 +1,9 @@
 # HuBMAP Spatial API
 
 This information will help you get the Spatian API up in running whether locally or on an environment.
+It is available at
+[DEV](https://spatial-api.dev.hubmapconsortium.org/status), and
+[PROD](https://spatial.api.hubmapconsortium.org/status).
 
 ## Configuration File
 

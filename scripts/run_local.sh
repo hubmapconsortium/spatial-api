@@ -55,10 +55,10 @@ fi
 source ./server/$ACTIVATE
 
 if [ $DOWN ]; then
-  echo ">>> Shut down and destroy DB and SERVER containers..."
+  echo ">> Shut down and destroy DB and SERVER containers..."
   echo
-  docker-compose -f docker-compose.db.local.yml down --rmi all
-  docker-compose -f docker-compose.api.local.yml down --rmi all
+  docker-compose -f docker-compose.db.local.yml down --remove-orphans --rmi all
+  docker-compose -f docker-compose.api.local.yml down --remove-orphans --rmi all
   exit 0
 fi
 
@@ -66,15 +66,18 @@ if [ $DB ] || [ $SERVER ]; then
   docker network create shared-web
 fi
 
+# Find the process listening on the DB port...
+#lsof -nP -iTCP -sTCP:LISTEN | grep 5432
+
 if [ $DB ]; then
-  echo ">>> Shut down and destroy DB container before bringing it up..."
+  echo ">> Shut down and destroy DB container before bringing it up..."
   echo
-  docker-compose -f docker-compose.db.local.yml down --rmi all
+  docker-compose -f docker-compose.db.local.yml down --remove-orphans --rmi all
   docker-compose -f docker-compose.db.local.yml up --build -d
 
   echo
-  echo ">>> Sleeping to give the DB a chance to start before rebuilding it..."
-  sleep 5
+  echo ">> Sleeping to give the DB a chance to start before rebuilding it..."
+  sleep 10
 
   # At this point the Database is up with all tables and constraints are created.
   # Some geometric test data loaded, but no data source data loaded (e.g., the DB is empty).
@@ -83,6 +86,8 @@ fi
 if [ $SERVER ]; then
   SERVER_LOG=server/log
   mkdir -p $SERVER_LOG
+  # Remove the previous log file before starting the service.
+  cp /dev/null $SERVER_LOG/uwsgi-spatial-api.log
 
   APP_LOCAL_PROPERTIES=server/resources/app.local.properties
   if [[ ! -f $APP_LOCAL_PROPERTIES ]]; then
@@ -90,7 +95,7 @@ if [ $SERVER ]; then
     exit 1
   fi
 
-  echo ">>> Shut down and destroy SERVER container before bringing it up..."
+  echo ">> Shut down and destroy SERVER container before bringing it up..."
   echo
   docker-compose -f docker-compose.api.local.yml down --rmi all
   cp /dev/null ${SERVER_LOG}/uwsgi-spatial-api.log
@@ -99,14 +104,19 @@ fi
 
 if [ $DB ]; then
   echo
-  echo ">>> Rebuilding database (through server) after destroying its container and reloading the schema..."
+  echo ">> Rebuilding database (through server) after destroying its container and reloading the schema..."
   echo
-  ./scripts/db_rebuild.sh -H http://localhost:5001 -D localhost:5432 -t $BEARER_TOKEN -r
+  # Needs to match information in server/resources/app.properties
+  # You will be prompted for the password found at: server/resources/app.properties [postgresql] Password
+  ./scripts/db_rebuild.sh -H http://localhost:5001 -D localhost:5432 -U spatial -d spatial -t $BEARER_TOKEN -r
+  # NOTE: The above calls ingest-api to "initiate" the "cell type count" process. Ingest-api spawns a thread
+  # to do this and returns the results via the PUT /samples/cell-type-counts to this (spatial-api) microservice.
+  # So, unless you are running a local ingest-api this step will not work and the table "cell_types" will not be built.
 fi
 
 if [ $TESTS ]; then
   echo
-  echo ">>> Run the Tests after bringing up the containers..."
+  echo ">> Run the Tests after bringing up the containers..."
   echo
   (cd server; export PYTHONPATH=.; python3 ./tests/geom.py -c)
   ./scripts/search_hubmap_id.sh

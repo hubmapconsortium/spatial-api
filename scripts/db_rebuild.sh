@@ -11,11 +11,8 @@ DATABASE_HOST_PORT_DEV=18.205.215.12:5432
 DATABASE_HOST_PORT_PROD=34.234.131.112:5432
 DATABASE_HOST_PORT=$DATABASE_HOST_PORT_PROD
 
-DATABASE_NAME_DEV=spatial
-DATABASE_NAME_PROD=spatial_prod_db
-DATABASE_NAME=$DATABASE_NAME_PROD
-
 DATABASE_USER=
+DATABASE_NAME=
 BEARER_TOKEN=
 INCREMENTAL_REINDEX=0
 RECREATE_DATABASE_TABLES=0
@@ -27,6 +24,7 @@ usage()
   echo " -H Scheme, host, and port of spatial-api server (${SCHEME_HOST_PORT})"
   echo " -D HOST:PORT Database Host and Port separated by a colon ':' (${DATABASE_HOST_PORT})"
   echo " -U DATABASE_USER Look in the resources/app.properties file for the [postgresql] Username"
+  echo " -d DATABASE_NAME Look in the resources/app.properties file for the [postgresql] Db"
   echo " -t BEARER_TOKEN (see text below)"
   echo " -i Incremental Reindex samples that are older than last processed"
   echo " -r Delete and then recreate Databases Tables from 'db/initdb.d/initdb.sql'"
@@ -40,11 +38,12 @@ usage()
   exit 2
 }
 
-while getopts 'H:D:U:t:irvh' arg; do
+while getopts 'H:D:U:d:t:irvh' arg; do
   case $arg in
     H) SCHEME_HOST_PORT=$OPTARG ;;
     D) DATABASE_HOST_PORT=$OPTARG ;;
     U) DATABASE_USER=$OPTARG ;;
+    d) DATABASE_NAME=$OPTARG ;;
     t) BEARER_TOKEN=$OPTARG ;;
     i) INCREMENTAL_REINDEX=1 ;;
     r) RECREATE_DATABASE_TABLES=1 ;;
@@ -57,7 +56,7 @@ shift $((OPTIND-1))
 
 echo
 echo "spatial-api: Scheme, host, and port: ${SCHEME_HOST_PORT}"
-echo "db: host, port: ${DATABASE_HOST_PORT}, user: ${DATABASE_USER}"
+echo "db: host:port: ${DATABASE_HOST_PORT}; user: ${DATABASE_USER}; name ${DATABASE_NAME}"
 echo "Bearer Token: ${BEARER_TOKEN}"
 echo "Incremental Reindex: ${INCREMENTAL_REINDEX}"
 echo "Recreate database tables: ${RECREATE_DATABASE_TABLES}"
@@ -99,7 +98,8 @@ if [[ $RECREATE_DATABASE_TABLES -eq 1 ]]; then
   fi
   echo
   echo ">>> Reloading database tables; dbhost: ${db_host}; db_port: ${db_port}"
-  echo "Look in the resources/app.properties file for the [postgresql] Passowrd."
+  echo
+  echo "Look in the resources/app.properties file for the [postgresql] Passowrd ---\/"
   psql -h ${db_host} -p ${db_port} -d $DATABASE_NAME -U $DATABASE_USER -f db/initdb.d/initdb.sql
 fi
 
@@ -109,11 +109,13 @@ echo
 
 # This must be done first because the organ-sample-data references it...
 echo ">>> Rebuild annotation details ..."
+echo
 curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/rebuild-annotation-details" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
 echo
 echo ">>> Reindexing all samples..."
+echo
 curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/reindex-all" \
  -H "Authorization: Bearer $BEARER_TOKEN"
 
@@ -121,16 +123,19 @@ echo "Done!"
 
 #echo
 #echo ">>> Extract cell_type_counts for samples of; organ_code: RK..."
+#echo
 #curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/RK/reindex" \
 # -H "Authorization: Bearer $BEARER_TOKEN"
 #
 #echo
 #echo ">>> Extract cell_type_counts for samples of; organ_code: LK..."
+#echo
 #curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/organs/LK/reindex" \
 # -H "Authorization: Bearer $BEARER_TOKEN"
 #
 #SAMPLE_ID=2b8f250ca625a3186cc6e2e8e40c3c58
 #echo ">>> Extract cell_type_counts for sample_id: ${SAMPLE_ID}..."
+#echo
 #curl $VERBOSE -X PUT -si "${SCHEME_HOST_PORT}/samples/${SAMPLE_ID}/reindex" \
 # -H "Authorization: Bearer $BEARER_TOKEN"
 

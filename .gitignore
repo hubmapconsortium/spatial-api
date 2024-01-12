@@ -4,7 +4,7 @@ venv/
 **/__pycache__/
 *.log
 server/resources/app.properties
-server/resources/app.local.properties
+server/resources/app.*.properties
 scripts/psc/*.json
 BUILD
 server/BUILD
