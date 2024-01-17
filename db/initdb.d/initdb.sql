@@ -1,8 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_sfcgal;
 
--- To reload the database tables on dev...
--- $ psql -h 18.205.215.12 -p 5432 -d spatial -U spatial -f db/initdb.d/initdb.sql
+-- NOTE: PosgreSQL will create a geography_columns table which is not used here (will be empty) as we
+-- are not concerned with measuring distances between points on a sphere. The geometry_columns will list
+-- the columns containing POLYHEDRALSURFACEs which are used for the 3d-manifolds created for the samples.
+-- NOTE: PostgreSQL will also create a spatial_ref_sys table which is not used here.
 
 SELECT version();
 SELECT postgis_version();
