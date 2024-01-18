@@ -11,8 +11,8 @@ SCHEME_HOST_PORT_DEV=https://spatial.api.hubmapconsortium.org
 
 # This information is found in `server/resources/app.properties` under `[postgresql]`...
 DB_HOST_PORT=34.234.131.112:5432
-DB_USER=spatial_prod_user
-DB_NAME=spatial_prod_db
+DB_USER=
+DB_NAME=
 
 # IMPORTANT NOTES:
 # 1) The TOKEN, must be a "data-admin" token since the endpoints being hit in db_rebuild.sh require that.
