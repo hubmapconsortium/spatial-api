@@ -1,18 +1,18 @@
 #!/bin/bash
 
-read -p "Are you REALLY sure that you want to DELETE EVERYTHING in the current DEV database and then rebuild it [Y/n]? " -n 1 -r
+read -p "Are you REALLY sure that you want to DELETE EVERYTHING in the current PROD database and then rebuild it [Y/n]? " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   echo "Aborting..."
   exit 1
 fi
 
-SCHEME_HOST_PORT_DEV=https://spatial-api.dev.hubmapconsortium.org
+SCHEME_HOST_PORT_DEV=https://spatial.api.hubmapconsortium.org
 
 # This information is found in `server/resources/app.properties` under `[postgresql]`...
-DB_HOST_PORT=18.205.215.12:5432
-DB_USER=spatialdb_dev_user
-DB_NAME=spatial-api_dev
+DB_HOST_PORT=34.234.131.112:5432
+DB_USER=spatial_prod_user
+DB_NAME=spatial_prod_db
 
 # IMPORTANT NOTES:
 # 1) The TOKEN, must be a "data-admin" token since the endpoints being hit in db_rebuild.sh require that.
