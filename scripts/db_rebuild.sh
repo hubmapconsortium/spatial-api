@@ -99,7 +99,7 @@ if [[ $RECREATE_DATABASE_TABLES -eq 1 ]]; then
   echo
   echo ">>> Reloading database tables; dbhost: ${db_host}; db_port: ${db_port}"
   echo
-  echo "Look in the resources/app.properties file for the [postgresql] Passowrd ---\/"
+  echo "Look in the resources/app.properties file for the [postgresql] Password requested below ---\/"
   psql -h ${db_host} -p ${db_port} -d $DATABASE_NAME -U $DATABASE_USER -f db/initdb.d/initdb.sql
 fi
 
