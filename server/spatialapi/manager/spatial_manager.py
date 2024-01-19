@@ -154,23 +154,23 @@ class SpatialManager(object):
         donor_sex: str = rec['donor']['sex']
         sample_uuid: str = rec['sample']['uuid']
         sample_hubmap_id: str = rec['sample']['hubmap_id']
-        sample_specimen_type: str = rec['sample']['specimen_type']
+        sample_sample_category: str = rec['sample']['sample_category']
         sample_last_modified_timestamp: int = rec['sample']['last_modified_timestamp']
         sample_rui_location: str = json.dumps(rec['sample']['rui_location'])
         sample_geom: str = self.create_geometry(rec['sample']['rui_location'])
         return f"INSERT INTO {self.table}" \
                " (organ_uuid, organ_code, donor_uuid, donor_sex, relative_spatial_entry_iri, sample_uuid," \
-               " sample_hubmap_id, sample_specimen_type, sample_rui_location," \
+               " sample_hubmap_id, sample_sample_category, sample_rui_location," \
                " sample_last_modified_timestamp, sample_geom)" \
                " VALUES (" \
                f"'{organ_uuid}', '{organ_code}', '{donor_uuid}', '{donor_sex}', '{target_iri}', '{sample_uuid}'," \
-               f" '{sample_hubmap_id}', '{sample_specimen_type}', '{sample_rui_location}'," \
+               f" '{sample_hubmap_id}', '{sample_sample_category}', '{sample_rui_location}'," \
                f" {sample_last_modified_timestamp}, {sample_geom}" \
                ")" \
                " ON CONFLICT ON CONSTRAINT sample_relative_spatial_entry_sample_uuid_key DO UPDATE SET" \
                f" organ_uuid = '{organ_uuid}', organ_code = '{organ_code}', donor_uuid = '{donor_uuid}'," \
                f" donor_sex = '{donor_sex}', sample_hubmap_id = '{sample_hubmap_id}'," \
-               f" sample_specimen_type = '{sample_specimen_type}', sample_rui_location = '{sample_rui_location}'," \
+               f" sample_sample_category = '{sample_sample_category}', sample_rui_location = '{sample_rui_location}'," \
                f" sample_geom = {sample_geom}" \
                " RETURNING id;"
     
@@ -253,7 +253,8 @@ class SpatialManager(object):
             f""" {self.table}.relative_spatial_entry_iri = %(relative_spatial_entry_iri)s
                 AND ST_3DDWithin(sample_geom, ST_GeomFromText('POINTZ(%(x)s %(y)s %(z)s)'), %(radius)s);
             """
-        logger.debug(f"find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id({relative_spatial_entry_iri}, {radius}, {hubmap_id}, {cell_type_name}): sql: {sql}")
+        logger.debug(f"find_relative_to_spatial_entry_iri_within_radius_from_hubmap_id({relative_spatial_entry_iri}, "
+                     f"{radius}, {hubmap_id}, {cell_type_name}): sample_rui_location: {sample_rui_location}; sql: {sql}")
         return self.postgresql_manager.select(sql, {
             'cell_type_name': cell_type_name,
             'relative_spatial_entry_iri': relative_spatial_entry_iri,

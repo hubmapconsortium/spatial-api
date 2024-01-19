@@ -175,9 +175,13 @@ class CellTypeCountManager(object):
                         f'sample_uuid:{sample_uuid} has no datasets with rui location information')
             return
         datasets: dict = neo4j_sample_datasets.get(sample_uuid)
+        ds_uuids: List[str] = list(datasets.keys())
         self.ingest_api_manager.begin_extract_cell_count_from_secondary_analysis_files(
-            bearer_token, sample_uuid, list(datasets.keys())
+            bearer_token, sample_uuid, ds_uuids
         )
+        logger.info('begin_extract_cell_type_counts_for_sample_uuid: '
+                    f'sample_uuid:{sample_uuid} found {len(ds_uuids)} '
+                    f'datasets: {", ".join(ds_uuids)}')
         try:
             cursor = self.postgresql_manager.new_cursor()
             for ds_uuid, ds_ts in datasets.items():

@@ -40,6 +40,7 @@ curl $VERBOSE --request POST \
   }'
 echo
 
+# NOTE: Since the cell_type table is filled by a callback from ingest-api this will return nothing when run locally.
 curl $VERBOSE --request POST \
  --url ${SCHEME_HOST_PORT}/spatial-search/hubmap-id \
  --header 'Content-Type: application/json' \
